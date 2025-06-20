@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>통합 관리자 대시보드</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #f4f7f6;
+        }
+        .progress-bar-inner {
+            transition: width 0.5s ease-in-out;
+        }
+        /* 부드러운 화면 전환 효과 */
+        .view {
+            display: none;
+            animation: fadeIn 0.5s;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <div class="container mx-auto p-4 md:p-8">
+        <!-- 워크북 선택 화면 -->
+        <div id="workbook-selection-view" class="view" style="display: block;">
+            <header class="text-center mb-10">
+                <h1 class="text-4xl md:text-5xl font-black text-[#2c3e50]">🚀 전체 워크북 목록</h1>
+                <p class="text-lg text-[#34495e] mt-2 font-bold">확인하고 싶은 워크북을 선택하세요.</p>
+            </header>
+            <main id="workbook-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- 자바스크립트로 워크북 목록이 여기에 채워집니다. -->
+            </main>
+        </div>
+
+        <!-- 학생 현황 상세 화면 -->
+        <div id="student-details-view" class="view">
+            <header class="mb-10">
+                <button id="backButton" class="bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors">
+                    &larr; 뒤로 가기
+                </button>
+                <div class="text-center -mt-10">
+                    <h1 id="details-title" class="text-4xl md:text-5xl font-black text-[#2c3e50]"></h1>
+                </div>
+            </header>
+            <main class="space-y-8">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    <div class="bg-white p-6 rounded-2xl shadow-lg text-center">
+                        <h2 class="text-xl font-bold text-gray-500">총 참여 학생 수</h2>
+                        <p id="totalStudents" class="text-5xl font-extrabold text-[#3498db]">0</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl shadow-lg text-center">
+                        <h2 class="text-xl font-bold text-gray-500">전체 평균 진행률</h2>
+                        <p id="averageProgress" class="text-5xl font-extrabold text-[#4ECDC4]">0%</p>
+                    </div>
+                </div>
+                <div id="studentList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- 자바스크립트로 학생 카드 목록이 여기에 채워집니다. -->
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- Firebase 기본 설정 ---
+        let firebaseConfig;
+        try {
+            firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : { apiKey: "DEMO", authDomain: "DEMO", projectId: "DEMO" };
+        } catch (e) {
+            console.error("Firebase config is not valid JSON:", __firebase_config);
+            firebaseConfig = { apiKey: "DEMO", authDomain: "DEMO", projectId: "DEMO" };
+        }
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        
+        // ===================================================================================
+        // ** 중요! **
+        // 새로운 워크북을 만들 때마다 아래 workbooks 배열에 정보를 추가해주세요.
+        // id: 워크북 자바스크립트 코드에 있는 appId 값과 동일해야 합니다.
+        // name: 대시보드에 표시될 워크북의 이름입니다.
+        // ===================================================================================
+        const workbooks = [
+            { id: 'snack-shop-workbook', name: '🌈 알록달록 스낵 가게 만들기' },
+            // 예시: { id: 'smart-pot-workbook', name: '🌱 똑똑한 스마트 화분' },
+            // 예시: { id: 'weather-station', name: '☀️ 우리 동네 날씨 관측소' },
+        ];
+        
+        // --- UI 요소 변수 ---
+        const workbookSelectionView = document.getElementById('workbook-selection-view');
+        const studentDetailsView = document.getElementById('student-details-view');
+        const workbookListContainer = document.getElementById('workbook-list');
+        const studentListContainer = document.getElementById('studentList');
+        const backButton = document.getElementById('backButton');
+        const detailsTitle = document.getElementById('details-title');
+        const totalStudentsEl = document.getElementById('totalStudents');
+        const averageProgressEl = document.getElementById('averageProgress');
+        let currentSnapshotUnsubscribe = null; // 실시간 감시를 멈추기 위한 변수
+
+        // --- 기능 함수 ---
+        /**
+         * 워크북 목록 화면을 표시하는 함수
+         */
+        const showWorkbookSelection = () => {
+            workbookSelectionView.style.display = 'block';
+            studentDetailsView.style.display = 'none';
+            // 이전에 실행 중이던 실시간 감시가 있다면 중지
+            if (currentSnapshotUnsubscribe) {
+                currentSnapshotUnsubscribe();
+                currentSnapshotUnsubscribe = null;
+            }
+        };
+
+        /**
+         * 특정 워크북의 학생 현황 화면을 표시하는 함수
+         * @param {object} workbook - {id, name} 워크북 정보 객체
+         */
+        const showStudentDetails = (workbook) => {
+            workbookSelectionView.style.display = 'none';
+            studentDetailsView.style.display = 'block';
+            detailsTitle.textContent = workbook.name;
+            studentListContainer.innerHTML = '<p class="text-center md:col-span-2 lg:col-span-3 text-gray-500">학생 데이터를 불러오는 중입니다...</p>';
+            totalStudentsEl.textContent = '0';
+            averageProgressEl.textContent = '0%';
+
+            // 선택된 워크북의 학생 데이터 경로 설정
+            const studentsColRef = collection(db, `artifacts/${workbook.id}/public/data/students`);
+            
+            // 실시간으로 학생 데이터 감시 시작
+            currentSnapshotUnsubscribe = onSnapshot(studentsColRef, (snapshot) => {
+                const studentsData = [];
+                snapshot.forEach((doc) => {
+                    studentsData.push([doc.id, doc.data()]);
+                });
+                updateDashboard(studentsData);
+            }, (error) => {
+                console.error(`Error fetching data for ${workbook.id}:`, error);
+                studentListContainer.innerHTML = `<p class="text-center md:col-span-2 lg:col-span-3 text-red-500">"${workbook.name}" 워크북 데이터를 불러오는 중 오류가 발생했습니다. 권한을 확인해주세요.</p>`;
+            });
+        };
+
+        /**
+         * 학생 카드 HTML을 생성하는 함수
+         */
+        const createStudentCard = (studentId, studentData) => {
+            const studentName = studentData.studentName || '이름 없음';
+            const studentIdShort = studentId.substring(0, 8);
+            
+            const completedTasks = studentData.completedTasks || [];
+            const totalTasks = 7; // 체크리스트 항목 개수를 고정값으로 설정
+            const completedCount = completedTasks.filter(Boolean).length;
+            const progress = totalTasks > 0 ? (completedCount / totalTasks) * 100 : 0;
+            
+            const story = (studentData.savedStory || '아직 이야기가 없어요.').replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            const thought1 = (studentData.savedThoughts?.[0] || '아직 생각이 없어요.').replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            const thought2 = (studentData.savedThoughts?.[1] || '아직 생각이 없어요.').replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+            const card = document.createElement('div');
+            card.className = "bg-white rounded-2xl shadow-lg p-6 space-y-4";
+            card.innerHTML = `
+                <div>
+                    <h3 class="font-bold text-xl text-[#2c3e50] truncate" title="${studentId}">${studentName}</h3>
+                    <p class="text-sm text-gray-400">ID: ${studentIdShort}...</p>
+                </div>
+                <div>
+                    <p class="font-semibold text-gray-600">진행률: ${Math.round(progress)}%</p>
+                    <div class="w-full bg-gray-200 rounded-full h-4 mt-1">
+                        <div class="bg-gradient-to-r from-[#3498db] to-[#4ECDC4] h-4 rounded-full" style="width: ${progress}%"></div>
+                    </div>
+                </div>
+                 <div class="space-y-2">
+                    <div>
+                        <h4 class="font-bold text-gray-700">🤖 AI 친구 이야기:</h4>
+                        <p class="text-sm bg-gray-100 p-2 rounded-md max-h-24 overflow-y-auto">${story}</p>
+                    </div>
+                </div>
+            `;
+            return card;
+        };
+        
+        /**
+         * 학생 데이터를 받아 대시보드 화면을 업데이트하는 함수
+         */
+        const updateDashboard = (students) => {
+            studentListContainer.innerHTML = '';
+            let totalProgress = 0;
+            
+            if (students.length === 0) {
+                studentListContainer.innerHTML = '<p class="text-center md:col-span-2 lg:col-span-3 text-gray-500">아직 참여한 학생이 없습니다.</p>';
+            }
+
+            // 학생 이름순으로 정렬
+            students.sort((a, b) => (a[1].studentName || '').localeCompare(b[1].studentName || '', 'ko'));
+
+            students.forEach(([id, data]) => {
+                const card = createStudentCard(id, data);
+                studentListContainer.appendChild(card);
+                
+                const completedTasks = data.completedTasks || [];
+                const totalTasks = 7;
+                const completedCount = completedTasks.filter(Boolean).length;
+                totalProgress += totalTasks > 0 ? (completedCount / totalTasks) * 100 : 0;
+            });
+            
+            totalStudentsEl.textContent = students.length;
+            const avgProgress = students.length > 0 ? totalProgress / students.length : 0;
+            averageProgressEl.textContent = `${Math.round(avgProgress)}%`;
+        };
+
+        // --- 초기화 및 이벤트 리스너 설정 ---
+        
+        // 워크북 목록을 화면에 그림
+        workbookListContainer.innerHTML = '';
+        workbooks.forEach(wb => {
+            const wbCard = document.createElement('div');
+            wbCard.className = "bg-white p-8 rounded-2xl shadow-lg text-center cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300";
+            wbCard.innerHTML = `<h2 class="text-2xl font-bold text-[#2c3e50]">${wb.name}</h2>`;
+            wbCard.addEventListener('click', () => showStudentDetails(wb));
+            workbookListContainer.appendChild(wbCard);
+        });
+        
+        // 뒤로 가기 버튼 이벤트
+        backButton.addEventListener('click', showWorkbookSelection);
+        
+        // Firebase 인증
+        onAuthStateChanged(auth, (user) => {
+            if (!user) {
+                signInAnonymously(auth).catch((error) => {
+                    console.error("Anonymous sign-in failed:", error);
+                });
+            }
+        });
+
+    </script>
+</body>
+</html>
