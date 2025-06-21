@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>알록달록 스낵 가게 만들기</title>
+    <title>알록달록 스낵 가게 만들기 (인터랙티브 워크북)</title>
     <!-- Tailwind CSS(스타일링 도구)를 불러옵니다 -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- 웹 폰트를 불러옵니다 -->
@@ -261,6 +261,7 @@
         // 이 워크북을 깃허브 등에 배포하려면, 본인의 Firebase 프로젝트 설정으로 바꿔주세요.
         // 1. Firebase 홈페이지에서 새 프로젝트를 만듭니다.
         // 2. 웹 앱(</>)을 추가하고 firebaseConfig 정보를 복사해서 아래 내용을 교체합니다.
+        // 3. 아래는 예시 정보이며, 실제 작동하지 않습니다.
         // ===================================================================================
         const firebaseConfig = {
             apiKey: "AIzaSyAvLt0F8gSqe24Gf0xHHw25MfMirmV6er0",
@@ -275,9 +276,15 @@
         // 각 워크북을 구별하기 위한 고유한 ID. 다른 주제로 만들 땐 이 값을 바꿔주세요.
         const appId = 'snack-shop-workbook';
         
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
+        // [수정됨] 제공된 firebaseConfig가 견본이 아닐 경우에만 앱을 초기화하도록 수정
+        let app, db, auth;
+        if (firebaseConfig.apiKey !== "AIzaSyAvLt0F8gSqe24Gf0xHHw25MfMirmV6er0") {
+            app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+        } else {
+            console.warn("Firebase 설정이 필요합니다. 깃허브 등 외부 환경에서 사용하려면, 실제 Firebase 프로젝트 정보를 입력해주세요.");
+        }
         
         let userId = null;
         let userDocRef = null;
@@ -371,18 +378,9 @@
         };
         
         const handleGenerateStory = async () => {
-            // ===================================================================================
-            // ** 중요! (2/2) **
-            // AI 이야기 생성 기능을 사용하려면, 본인의 Gemini API 키로 바꿔주세요.
-            // 1. Google AI Studio (aistudio.google.com) 에서 API 키를 발급받습니다.
-            // 2. 발급받은 키를 아래 "YOUR_GEMINI_API_KEY" 부분에 붙여넣습니다.
-            // ===================================================================================
-            const apiKey = "AIzaSyDisFcOw5YID2cddWgeV2PxAfyuDdhPtfY";
-
-            if (apiKey === "AIzaSyDisFcOw5YID2cddWgeV2PxAfyuDdhPtfY") {
-                storyResult.textContent = '이야기 생성 기능을 사용하려면 선생님의 Gemini API 키가 필요해요!';
-                return;
-            }
+            // [수정됨] 이 개발 환경에서는 API 키가 자동으로 제공됩니다.
+            // 깃허브 등 외부에서 사용하려면, 본인의 Gemini API 키를 "" 안에 넣어주세요.
+            const apiKey = "AIzaSyDisFcOw5YID2cddWgeV2PxAfyuDdhPtfY"; 
 
             const k1 = keyword1.value.trim();
             const k2 = keyword2.value.trim();
@@ -400,7 +398,17 @@
             const prompt = `알록달록 스낵 가게에서 일하는 로봇에 대한 이야기야. '${k1}', '${k2}', '${k3}' 단어를 꼭 넣어서, 초등학생이 좋아할 만한 짧고 재미있는 이야기를 만들어 줘.`;
             
             try {
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+                let finalApiKey = apiKey;
+                // 이 개발 환경에서는 __gmn_api_key가 자동으로 제공됩니다.
+                if(typeof __gmn_api_key !== 'undefined' && __gmn_api_key) {
+                    finalApiKey = __gmn_api_key;
+                }
+                
+                if (!finalApiKey) {
+                    throw new Error("API 키가 설정되지 않았습니다. 깃허브 배포 시에는 API 키를 직접 입력해야 합니다.");
+                }
+
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${finalApiKey}`;
                 
                 const response = await fetch(apiUrl, {
                     method: 'POST',
@@ -414,7 +422,7 @@
 
                 const result = await response.json();
                 
-                if (result.candidates && result.candidates.length > 0) {
+                if (result.candidates && result.candidates.length > 0 && result.candidates[0].content && result.candidates[0].content.parts && result.candidates[0].content.parts.length > 0) {
                     const text = result.candidates[0].content.parts[0].text;
                     storyResult.textContent = text;
                 } else {
@@ -422,7 +430,7 @@
                 }
             } catch (error) {
                 console.error("Error generating story:", error);
-                storyResult.textContent = '오류가 발생했어요. 인터넷 연결을 확인하고 다시 시도해 보세요.';
+                storyResult.textContent = '오류가 발생했어요. 인터넷 연결을 확인하거나, API 키 설정을 확인해주세요.';
             } finally {
                 btnText.textContent = '재미있는 이야기 만들기!';
                 btnSpinner.classList.add('hidden');
@@ -453,24 +461,27 @@
             }
         });
 
-        onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                userId = user.uid;
-                userDocRef = doc(db, `artifacts/${appId}/public/data/students`, userId);
-                onSnapshot(userDocRef, (docSnap) => {
-                    if (docSnap.exists()) {
-                        loadState(docSnap.data());
-                    } else {
-                        console.log("No previous data found. Creating new document.");
-                        saveState(); 
-                    }
-                }, (error) => {
-                    console.error("Error with onSnapshot:", error);
-                });
-            } else {
-                 signInAnonymously(auth).catch((error) => console.error("Anonymous sign-in failed:", error));
-            }
-        });
+        // Firebase가 설정된 경우에만 인증 및 데이터 로딩 실행
+        if (auth) {
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    userId = user.uid;
+                    userDocRef = doc(db, `artifacts/${appId}/public/data/students`, userId);
+                    onSnapshot(userDocRef, (docSnap) => {
+                        if (docSnap.exists()) {
+                            loadState(docSnap.data());
+                        } else {
+                            console.log("No previous data found. Creating new document.");
+                            saveState(); 
+                        }
+                    }, (error) => {
+                        console.error("Error with onSnapshot:", error);
+                    });
+                } else {
+                     signInAnonymously(auth).catch((error) => console.error("Anonymous sign-in failed:", error));
+                }
+            });
+        }
         
     </script>
 </body>
