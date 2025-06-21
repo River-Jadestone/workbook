@@ -34,8 +34,8 @@
 </head>
 <body class="text-gray-800">
 
-    <!-- [신규 기능] 비밀번호 입력 화면 -->
-    <div id="password-view" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center p-4">
+    <!-- 비밀번호 입력 화면 -->
+    <div id="password-view" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center p-4 z-50">
         <div class="bg-white p-8 rounded-2xl shadow-2xl text-center w-full max-w-sm">
             <h2 class="text-2xl font-bold mb-4">🔒 관리자 인증</h2>
             <p class="text-gray-600 mb-6">대시보드에 접속하려면 비밀번호를 입력하세요.</p>
@@ -87,7 +87,7 @@
     </div>
 
     <!-- 삭제 확인 모달 창 -->
-    <div id="delete-confirmation-modal" class="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden">
+    <div id="delete-confirmation-modal" class="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
         <div class="modal-content bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full transform scale-95">
             <h2 class="text-2xl font-bold text-gray-800 mb-4">정말 삭제하시겠습니까?</h2>
             <p id="delete-confirmation-text" class="text-gray-600 mb-6"></p>
@@ -136,15 +136,19 @@
         const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
 
         let currentSnapshotUnsubscribe = null;
-        let currentWorkbookId = null;
+        let currentWorkbook = null; 
         let studentIdToDelete = null; 
 
         // ===================================================================================
         // ** 중요! **
         // 새로운 워크북을 만들 때마다 아래 workbooks 배열에 정보를 추가해주세요.
+        // id: 각 워크북의 appId 값과 동일해야 합니다.
+        // name: 대시보드에 표시될 이름입니다.
+        // totalTasks: 해당 워크북의 체크리스트 항목 총 개수입니다.
         // ===================================================================================
         const workbooks = [
-            { id: 'snack-shop-workbook', name: '🌈 알록달록 스낵 가게 만들기' },
+            { id: 'snack-shop-workbook', name: '🌈 알록달록 스낵 가게 만들기', totalTasks: 6 },
+            { id: 'cave-car-workbook', name: '🔦 동굴 탐험 자동차 만들기', totalTasks: 5 }
         ];
         
         /**
@@ -176,15 +180,8 @@
                 return;
             }
 
-            // 워크북 목록을 화면에 그림
-            workbookListContainer.innerHTML = '';
-            workbooks.forEach(wb => {
-                const wbCard = document.createElement('div');
-                wbCard.className = "bg-white p-8 rounded-2xl shadow-lg text-center cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300";
-                wbCard.innerHTML = `<h2 class="text-2xl font-bold text-[#2c3e50]">${wb.name}</h2>`;
-                wbCard.addEventListener('click', () => showStudentDetails(wb));
-                workbookListContainer.appendChild(wbCard);
-            });
+            // [수정됨] Firebase에서 목록을 불러오는 대신, 코드에 직접 작성된 목록을 사용합니다.
+            renderWorkbookList(workbooks);
         
             // Firebase 인증
             onAuthStateChanged(auth, (user) => {
@@ -194,6 +191,23 @@
             });
         }
         
+        /**
+         * 워크북 목록 카드를 화면에 그리는 함수
+         */
+        function renderWorkbookList(workbooks) {
+            workbookListContainer.innerHTML = '';
+            if (workbooks.length === 0) {
+                 workbookListContainer.innerHTML = `<p class="text-gray-500 md:col-span-3 text-center">등록된 워크북이 없습니다. 코드의 workbooks 배열을 확인해주세요.</p>`;
+            }
+            workbooks.forEach(wb => {
+                const wbCard = document.createElement('div');
+                wbCard.className = "bg-white p-8 rounded-2xl shadow-lg text-center cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300";
+                wbCard.innerHTML = `<h2 class="text-2xl font-bold text-[#2c3e50]">${wb.name}</h2>`;
+                wbCard.addEventListener('click', () => showStudentDetails(wb));
+                workbookListContainer.appendChild(wbCard);
+            });
+        }
+
         const showWorkbookSelection = () => {
             workbookSelectionView.style.display = 'block';
             studentDetailsView.style.display = 'none';
@@ -201,11 +215,11 @@
                 currentSnapshotUnsubscribe();
                 currentSnapshotUnsubscribe = null;
             }
-            currentWorkbookId = null;
+            currentWorkbook = null;
         };
 
         const showStudentDetails = (workbook) => {
-            currentWorkbookId = workbook.id;
+            currentWorkbook = workbook;
             workbookSelectionView.style.display = 'none';
             studentDetailsView.style.display = 'block';
             detailsTitle.textContent = workbook.name;
@@ -213,25 +227,25 @@
             totalStudentsEl.textContent = '0';
             averageProgressEl.textContent = '0%';
 
-            const studentsColRef = collection(db, `artifacts/${currentWorkbookId}/public/data/students`);
+            // [수정됨] 학생 데이터 경로를 워크북 코드와 일치시켰습니다.
+            const studentsColRef = collection(db, `artifacts/${workbook.id}/public/data/students`);
             
             currentSnapshotUnsubscribe = onSnapshot(studentsColRef, (snapshot) => {
                 const studentsData = [];
                 snapshot.forEach((doc) => {
                     studentsData.push([doc.id, doc.data()]);
                 });
-                updateDashboard(studentsData);
+                updateDashboard(studentsData, workbook.totalTasks);
             }, (error) => {
-                console.error(`Error fetching data for ${currentWorkbookId}:`, error);
-                studentListContainer.innerHTML = `<p class="text-center md:col-span-2 lg:col-span-3 text-red-500">"${workbook.name}" 워크북 데이터를 불러오는 중 오류가 발생했습니다. 권한을 확인해주세요.</p>`;
+                console.error(`Error fetching data for ${workbook.id}:`, error);
+                studentListContainer.innerHTML = `<p class="text-center md:col-span-2 lg:col-span-3 text-red-500">"${workbook.name}" 워크북 데이터를 불러오는 중 오류가 발생했습니다. Firestore 보안 규칙을 확인해주세요.</p>`;
             });
         };
 
-        const createStudentCard = (studentId, studentData) => {
+        const createStudentCard = (studentId, studentData, totalTasks) => {
             const studentName = studentData.studentName || '이름 없음';
             const studentIdShort = studentId.substring(0, 8);
             const completedTasks = studentData.completedTasks || [];
-            const totalTasks = 7; 
             const completedCount = completedTasks.filter(Boolean).length;
             const progress = totalTasks > 0 ? (completedCount / totalTasks) * 100 : 0;
             const story = (studentData.savedStory || '아직 이야기가 없어요.').replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -262,7 +276,7 @@
             return card;
         };
         
-        const updateDashboard = (students) => {
+        const updateDashboard = (students, totalTasks) => {
             studentListContainer.innerHTML = '';
             let totalProgress = 0;
             
@@ -273,11 +287,10 @@
             students.sort((a, b) => (a[1].studentName || '').localeCompare(b[1].studentName || '', 'ko'));
 
             students.forEach(([id, data]) => {
-                const card = createStudentCard(id, data);
+                const card = createStudentCard(id, data, totalTasks);
                 studentListContainer.appendChild(card);
                 
                 const completedTasks = data.completedTasks || [];
-                const totalTasks = 7;
                 const completedCount = completedTasks.filter(Boolean).length;
                 totalProgress += totalTasks > 0 ? (completedCount / totalTasks) * 100 : 0;
             });
@@ -319,8 +332,8 @@
 
         cancelDeleteBtn.addEventListener('click', closeDeleteModal);
         confirmDeleteBtn.addEventListener('click', async () => {
-            if (studentIdToDelete && currentWorkbookId) {
-                const docRef = doc(db, `artifacts/${currentWorkbookId}/public/data/students`, studentIdToDelete);
+            if (studentIdToDelete && currentWorkbook.id) {
+                const docRef = doc(db, `artifacts/${currentWorkbook.id}/public/data/students`, studentIdToDelete);
                 try {
                     await deleteDoc(docRef);
                 } catch (error) {
