@@ -256,14 +256,24 @@
         import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'snack-shop-workbook';
-        let firebaseConfig;
-        try {
-            firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : { apiKey: "DEMO", authDomain: "DEMO", projectId: "DEMO" };
-        } catch (e) {
-            console.error("Firebase config is not valid JSON:", __firebase_config);
-            firebaseConfig = { apiKey: "DEMO", authDomain: "DEMO", projectId: "DEMO" };
-        }
+        // ===================================================================================
+        // ** 중요! (1/2) **
+        // 이 워크북을 깃허브 등에 배포하려면, 본인의 Firebase 프로젝트 설정으로 바꿔주세요.
+        // 1. Firebase 홈페이지에서 새 프로젝트를 만듭니다.
+        // 2. 웹 앱(</>)을 추가하고 firebaseConfig 정보를 복사해서 아래 내용을 교체합니다.
+        // ===================================================================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyAvLt0F8gSqe24Gf0xHHw25MfMirmV6er0",
+            authDomain: "workbook-c77c1.firebaseapp.com",
+            projectId: "workbook-c77c1",
+            storageBucket: "workbook-c77c1.firebasestorage.app",
+            messagingSenderId: "763395615278",
+            appId: "1:763395615278:web:8f245f9b328440f0a54dbf",
+            measurementId: "G-M1GP1JRRVV"
+        };
+        
+        // 각 워크북을 구별하기 위한 고유한 ID. 다른 주제로 만들 땐 이 값을 바꿔주세요.
+        const appId = 'snack-shop-workbook';
         
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
@@ -325,7 +335,6 @@
             bodyEl.classList.add(`theme-${themeName}`);
             bodyEl.dataset.theme = themeName;
             
-            // 활성화된 테마 버튼에 시각적 효과 추가
             document.querySelectorAll('#theme-selector button').forEach(btn => {
                 btn.classList.remove('ring-blue-500');
             });
@@ -362,6 +371,19 @@
         };
         
         const handleGenerateStory = async () => {
+            // ===================================================================================
+            // ** 중요! (2/2) **
+            // AI 이야기 생성 기능을 사용하려면, 본인의 Gemini API 키로 바꿔주세요.
+            // 1. Google AI Studio (aistudio.google.com) 에서 API 키를 발급받습니다.
+            // 2. 발급받은 키를 아래 "YOUR_GEMINI_API_KEY" 부분에 붙여넣습니다.
+            // ===================================================================================
+            const apiKey = "AIzaSyDisFcOw5YID2cddWgeV2PxAfyuDdhPtfY";
+
+            if (apiKey === "AIzaSyDisFcOw5YID2cddWgeV2PxAfyuDdhPtfY") {
+                storyResult.textContent = '이야기 생성 기능을 사용하려면 선생님의 Gemini API 키가 필요해요!';
+                return;
+            }
+
             const k1 = keyword1.value.trim();
             const k2 = keyword2.value.trim();
             const k3 = keyword3.value.trim();
@@ -378,7 +400,6 @@
             const prompt = `알록달록 스낵 가게에서 일하는 로봇에 대한 이야기야. '${k1}', '${k2}', '${k3}' 단어를 꼭 넣어서, 초등학생이 좋아할 만한 짧고 재미있는 이야기를 만들어 줘.`;
             
             try {
-                const apiKey = "";
                 const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
                 
                 const response = await fetch(apiUrl, {
@@ -447,19 +468,10 @@
                     console.error("Error with onSnapshot:", error);
                 });
             } else {
-                console.log("No user signed in.");
+                 signInAnonymously(auth).catch((error) => console.error("Anonymous sign-in failed:", error));
             }
         });
         
-        try {
-            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                 await signInWithCustomToken(auth, __initial_auth_token);
-            } else {
-                 await signInAnonymously(auth);
-            }
-        } catch(error) {
-            console.error("Authentication failed:", error);
-        }
     </script>
 </body>
 </html>
