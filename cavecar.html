@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>동굴 탐험 자동차 (인터랙티브 워크북)</title>
+    <!-- Tailwind CSS(스타일링 도구)를 불러옵니다 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 웹 폰트를 불러옵니다 -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet">
+    <!-- 이 페이지에서만 사용할 추가 스타일을 정의합니다 -->
+    <style>
+        /* 기본 폰트를 설정합니다 */
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #fdfdff; 
+            transition: background-color 0.5s;
+        }
+        /* 테마별 스타일 정의 */
+        .theme-blue .theme-text { color: #3498db; }
+        .theme-blue .theme-bg { background-color: #3498db; }
+        .theme-blue .theme-bg-hover:hover { background-color: #2980b9; }
+        .theme-blue .theme-ring:focus { ring-color: #3498db; }
+        
+        .theme-orange .theme-text { color: #f39c12; }
+        .theme-orange .theme-bg { background-color: #f39c12; }
+        .theme-orange .theme-bg-hover:hover { background-color: #e67e22; }
+        .theme-orange .theme-ring:focus { ring-color: #f39c12; }
+
+        .theme-indigo .theme-text { color: #8e44ad; }
+        .theme-indigo .theme-bg { background-color: #8e44ad; }
+        .theme-indigo .theme-bg-hover:hover { background-color: #9b59b6; }
+        .theme-indigo .theme-ring:focus { ring-color: #8e44ad; }
+
+        /* '오늘 할 일' 항목이 완료됐을 때의 스타일 */
+        .task-item.completed {
+            text-decoration: line-through; /* 취소선 */
+            color: #9ca3af; /* 회색 글씨 */
+        }
+        .task-item.completed .checkbox {
+            background-color: #4ECDC4; /* 배경색 변경 */
+            border-color: #4ECDC4; /* 테두리색 변경 */
+        }
+        /* 체크박스 안에 체크 표시(✔)를 만듭니다 */
+        .task-item .checkbox::after {
+            content: '✔';
+            color: white;
+            display: inline-block;
+            opacity: 0; /* 처음엔 안 보이게 */
+            transform: scale(0.5); /* 처음엔 작게 */
+            transition: all 0.2s ease-in-out; /* 부드러운 애니메이션 효과 */
+        }
+        /* 완료된 항목에만 체크 표시가 보이도록 합니다 */
+        .task-item.completed .checkbox::after {
+            opacity: 1; /* 보이게 */
+            transform: scale(1); /* 원래 크기로 */
+        }
+        /* 진행률 바(Progress Bar)가 채워질 때 부드럽게 움직이도록 합니다 */
+        .progress-bar-inner {
+            transition: width 0.5s ease-in-out;
+        }
+        /* 로딩 중 표시(스피너) 스타일 */
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: #4ECDC4;
+            animation: spin 1s ease infinite; /* 빙글빙글 도는 애니메이션 */
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-gray-800 theme-blue">
+
+    <!-- 전체 페이지를 감싸는 컨테이너 -->
+    <div class="container mx-auto p-4 md:p-8 max-w-4xl">
+
+        <!-- 페이지 최상단 제목 부분 -->
+        <header class="text-center mb-10">
+            <h1 class="text-4xl md:text-5xl font-black text-[#2c3e50]">🔦 동굴 탐험 자동차 만들기</h1>
+            <p class="text-lg theme-text mt-2 font-bold">나만의 로봇으로 신비한 동굴을 탐험해요!</p>
+        </header>
+
+        <!-- 메인 콘텐츠 영역 -->
+        <main class="space-y-8">
+            
+            <div class="bg-white rounded-2xl shadow-lg p-6 grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                <div>
+                    <label for="studentName" class="block font-bold text-xl text-[#2c3e50] mb-2">👋 내 이름은?</label>
+                    <input type="text" id="studentName" placeholder="탐험가 이름을 적어주세요..." class="w-full p-3 border-2 border-gray-200 rounded-lg focus:ring-2 theme-ring focus:border-transparent transition">
+                </div>
+                <div>
+                    <p class="block font-bold text-xl text-[#2c3e50] mb-2">🎨 탐험대 테마 색 고르기</p>
+                    <div id="theme-selector" class="flex space-x-3">
+                        <button data-theme="blue" class="w-10 h-10 rounded-full bg-[#3498db] ring-2 ring-offset-2 ring-transparent transition"></button>
+                        <button data-theme="orange" class="w-10 h-10 rounded-full bg-[#f39c12] ring-2 ring-offset-2 ring-transparent transition"></button>
+                        <button data-theme="indigo" class="w-10 h-10 rounded-full bg-[#8e44ad] ring-2 ring-offset-2 ring-transparent transition"></button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 오늘 내가 할 일 섹션 (체크리스트) -->
+            <div class="bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition-shadow duration-300">
+                <h2 class="text-2xl font-bold text-[#2c3e50] mb-4">✅ 오늘 활동 체크하기</h2>
+                <div class="mb-4">
+                    <div class="w-full bg-gray-200 rounded-full h-4">
+                        <div id="progressBar" class="bg-gradient-to-r from-[#3498db] to-[#4ECDC4] h-4 rounded-full progress-bar-inner" style="width: 0%"></div>
+                    </div>
+                    <p id="progressText" class="text-right text-sm font-semibold text-gray-600 mt-1">0% 완료</p>
+                </div>
+                <ul id="taskList" class="space-y-3">
+                    <li class="task-item flex items-center p-3 bg-slate-100 rounded-lg cursor-pointer hover:bg-slate-200 transition-colors">
+                        <div class="checkbox w-6 h-6 border-2 border-gray-300 rounded-md mr-4 flex-shrink-0 flex items-center justify-center"></div>
+                        <span>빛나는 손전등(라이트 매트릭스)을 만들었어요.</span>
+                    </li>
+                    <li class="task-item flex items-center p-3 bg-slate-100 rounded-lg cursor-pointer hover:bg-slate-200 transition-colors">
+                        <div class="checkbox w-6 h-6 border-2 border-gray-300 rounded-md mr-4 flex-shrink-0 flex items-center justify-center"></div>
+                        <span>동굴 탐사차로 변신시켜 움직여 봤어요.</span>
+                    </li>
+                    <li class="task-item flex items-center p-3 bg-slate-100 rounded-lg cursor-pointer hover:bg-slate-200 transition-colors">
+                        <div class="checkbox w-6 h-6 border-2 border-gray-300 rounded-md mr-4 flex-shrink-0 flex items-center justify-center"></div>
+                        <span>(또는) 보물 탐사차로 변신시켜 보물을 찾아봤어요.</span>
+                    </li>
+                    <li class="task-item flex items-center p-3 bg-slate-100 rounded-lg cursor-pointer hover:bg-slate-200 transition-colors">
+                        <div class="checkbox w-6 h-6 border-2 border-gray-300 rounded-md mr-4 flex-shrink-0 flex items-center justify-center"></div>
+                        <span>AI로 나만의 동굴 탐험 이야기를 만들었어요.</span>
+                    </li>
+                     <li class="task-item flex items-center p-3 bg-slate-100 rounded-lg cursor-pointer hover:bg-slate-200 transition-colors">
+                        <div class="checkbox w-6 h-6 border-2 border-gray-300 rounded-md mr-4 flex-shrink-0 flex items-center justify-center"></div>
+                        <span>내가 만든 동굴 자동차를 친구들에게 발표했어요.</span>
+                    </li>
+                </ul>
+            </div>
+            
+            <!-- AI 이야기 만들기 섹션 -->
+            <div class="bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition-shadow duration-300">
+                <h2 class="text-2xl font-bold text-[#2c3e50] mb-4">🚀 AI 친구랑 이야기 만들기</h2>
+                <p class="text-gray-600 mb-4">나의 동굴 탐험 자동차가 겪을 신나는 모험 이야기를 상상해봐요!</p>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <input id="keyword1" type="text" placeholder="단어 1 (예: 동굴)" class="p-2 border border-gray-300 rounded-md focus:ring-2 theme-ring focus:border-transparent">
+                    <input id="keyword2" type="text" placeholder="단어 2 (예: 보물)" class="p-2 border border-gray-300 rounded-md focus:ring-2 theme-ring focus:border-transparent">
+                    <input id="keyword3" type="text" placeholder="단어 3 (예: 박쥐)" class="p-2 border border-gray-300 rounded-md focus:ring-2 theme-ring focus:border-transparent">
+                </div>
+                <button id="generateStoryBtn" class="w-full theme-bg text-white font-bold py-2 px-4 rounded-lg theme-bg-hover transition-colors flex items-center justify-center">
+                    <span id="btnText">신나는 이야기 만들기!</span>
+                    <div id="btnSpinner" class="spinner hidden ml-2"></div>
+                </button>
+                <div id="storyResult" class="mt-4 p-4 bg-gray-100 rounded-md min-h-[100px] whitespace-pre-wrap">AI 친구가 여기에 이야기를 만들어 줄 거예요!</div>
+            </div>
+
+            <!-- 미션 섹션 -->
+            <div class="bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition-shadow duration-300">
+                <h2 class="text-2xl font-bold text-center text-[#2c3e50] mb-6">🎯 오늘의 미션: 동굴 탐험 로봇 만들기!</h2>
+                
+                <!-- 1단계: 기본 미션 -->
+                <div class="border-2 border-gray-200 p-4 rounded-xl mb-6">
+                    <h3 class="font-bold text-lg text-[#2c3e50] mb-2">1단계: 빛나는 손전등 (기본 미션)</h3>
+                    <p class="text-gray-600 mb-2">먼저, 동굴을 밝힐 기본 장비를 만들어요. **라이트 매트릭스를 포트 1개에 연결**하고 코딩해 보세요!</p>
+                    <div class="bg-gray-100 p-3 rounded-lg text-center">
+                        <p>➡️ 라이트 매트릭스로 내가 좋아하는 **손전등 모양** 만들기</p>
+                    </div>
+                </div>
+
+                <!-- 2단계: 선택 미션 -->
+                <div>
+                    <h3 class="font-bold text-lg text-[#2c3e50] mb-2">🚀 2단계: 자동차로 변신! (선택 미션)</h3>
+                    <p class="text-gray-600 mb-4">라이트 매트릭스를 분리하고, **포트 2개**를 사용해서 둘 중 하나를 골라 만들어보세요!</p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="bg-blue-50 border-2 border-dashed border-blue-200 p-4 rounded-lg">
+                            <h4 class="font-bold text-blue-800 text-center text-lg mb-2">선택 1: 동굴 탐사차</h4>
+                            <p class="text-sm text-blue-700 mb-2">**필요한 부품:** 모터 2개</p>
+                            <ul class="list-disc list-inside text-sm text-blue-700 space-y-1">
+                                <li>앞으로, 뒤로, 마음대로 움직이기</li>
+                                <li>허브 LED로 헤드라이트 켜기</li>
+                            </ul>
+                        </div>
+                        <div class="bg-purple-50 border-2 border-dashed border-purple-200 p-4 rounded-lg">
+                            <h4 class="font-bold text-purple-800 text-center text-lg mb-2">선택 2: 보물 탐사차</h4>
+                             <p class="text-sm text-purple-700 mb-2">**필요한 부품:** 모터 1개 + 컬러센서 1개</p>
+                            <ul class="list-disc list-inside text-sm text-purple-700 space-y-1">
+                                <li>제자리에서 돌며 주변 살피기</li>
+                                <li>색깔 보석을 찾으면 LED 불빛 바꾸기</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 생각 나누기 섹션 -->
+            <div class="bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition-shadow duration-300">
+                <h2 class="text-2xl font-bold text-[#2c3e50] mb-4">🤔 생각 나누기</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label for="thought1" class="block font-semibold text-gray-700 mb-1">오늘 내가 만든 동굴 자동차의 기능 중 가장 자랑하고 싶은 것은 무엇인가요?</label>
+                        <textarea id="thought1" rows="3" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 theme-ring focus:border-transparent" placeholder="여기에 자유롭게 생각을 적어보세요..."></textarea>
+                    </div>
+                    <div>
+                        <label for="thought2" class="block font-semibold text-gray-700 mb-1">내가 만든 탐험 자동차를 우리 생활 속 어디에 사용하면 좋을까요?</label>
+                        <textarea id="thought2" rows="3" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 theme-ring focus:border-transparent" placeholder="상상력을 발휘해 멋진 아이디어를 내보세요!"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lg:col-span-3 text-center text-sm text-gray-500 mt-4">
+                <p>Firebase와 연동하여 학습 진행 상황이 자동으로 저장됩니다.</p>
+            </div>
+        </main>
+    </div>
+
+    <!-- 자바스크립트 코드 시작 -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // ===================================================================================
+        // ** 중요! (1/2) **
+        // 이 워크북을 깃허브 등에 배포하려면, 본인의 Firebase 프로젝트 설정으로 바꿔주세요.
+        // ===================================================================================
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT_ID.appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+        
+        // 각 워크북을 구별하기 위한 고유한 ID
+        const appId = 'cave-car-workbook';
+        
+        let app, db, auth;
+        try {
+            app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+        } catch (e) {
+            console.error("Firebase 초기화에 실패했습니다. firebaseConfig 값을 확인해주세요.", e);
+        }
+        
+        let userId = null;
+        let userDocRef = null;
+        
+        const studentNameEl = document.getElementById('studentName');
+        const taskList = document.getElementById('taskList');
+        const taskItems = Array.from(taskList.getElementsByClassName('task-item'));
+        const progressBar = document.getElementById('progressBar');
+        const progressText = document.getElementById('progressText');
+        const generateStoryBtn = document.getElementById('generateStoryBtn');
+        const storyResult = document.getElementById('storyResult');
+        const keyword1 = document.getElementById('keyword1');
+        const keyword2 = document.getElementById('keyword2');
+        const keyword3 = document.getElementById('keyword3');
+        const btnText = document.getElementById('btnText');
+        const btnSpinner = document.getElementById('btnSpinner');
+        const thought1 = document.getElementById('thought1');
+        const thought2 = document.getElementById('thought2');
+        const themeSelector = document.getElementById('theme-selector');
+        const bodyEl = document.body;
+
+        const updateProgress = () => {
+            const completedTasks = taskItems.filter(item => item.classList.contains('completed')).length;
+            const totalTasks = taskItems.length;
+            const percentage = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
+            progressBar.style.width = `${percentage}%`;
+            progressText.textContent = `${Math.round(percentage)}% 완료`;
+        };
+        
+        const saveState = async () => {
+            if (!userDocRef) return;
+            const completedState = taskItems.map(item => item.classList.contains('completed'));
+            const storyText = storyResult.innerHTML;
+            const keywords = [keyword1.value, keyword2.value, keyword3.value];
+            const thoughts = [thought1.value, thought2.value];
+            const name = studentNameEl.value;
+            const theme = bodyEl.dataset.theme || 'blue';
+
+            try {
+                await setDoc(userDocRef, { 
+                    studentName: name,
+                    theme: theme,
+                    completedTasks: completedState, 
+                    savedStory: storyText, 
+                    savedKeywords: keywords,
+                    savedThoughts: thoughts 
+                }, { merge: true });
+            } catch (error) {
+                console.error("Error saving state:", error);
+            }
+        };
+        
+        const applyTheme = (themeName) => {
+            bodyEl.classList.remove('theme-blue', 'theme-orange', 'theme-indigo');
+            bodyEl.classList.add(`theme-${themeName}`);
+            bodyEl.dataset.theme = themeName;
+            
+            document.querySelectorAll('#theme-selector button').forEach(btn => {
+                btn.classList.remove('ring-blue-500');
+            });
+            document.querySelector(`#theme-selector button[data-theme="${themeName}"]`).classList.add('ring-blue-500');
+        };
+
+        const loadState = (data) => {
+            applyTheme(data.theme || 'blue');
+            if (data.studentName) {
+                studentNameEl.value = data.studentName;
+            }
+            if (data.completedTasks && data.completedTasks.length === taskItems.length) {
+                taskItems.forEach((item, index) => {
+                    if (data.completedTasks[index]) {
+                        item.classList.add('completed');
+                    } else {
+                        item.classList.remove('completed');
+                    }
+                });
+            }
+            if (data.savedStory) {
+                storyResult.innerHTML = data.savedStory;
+            }
+            if(data.savedKeywords && data.savedKeywords.length === 3) {
+                keyword1.value = data.savedKeywords[0] || '';
+                keyword2.value = data.savedKeywords[1] || '';
+                keyword3.value = data.savedKeywords[2] || '';
+            }
+            if(data.savedThoughts && data.savedThoughts.length === 2) {
+                thought1.value = data.savedThoughts[0] || '';
+                thought2.value = data.savedThoughts[1] || '';
+            }
+            updateProgress();
+        };
+        
+        const handleGenerateStory = async () => {
+            // ===================================================================================
+            // ** 중요! (2/2) **
+            // AI 이야기 생성 기능을 사용하려면, 본인의 Gemini API 키로 바꿔주세요.
+            // ===================================================================================
+            const apiKey = "YOUR_GEMINI_API_KEY";
+
+            if (apiKey.includes("YOUR_GEMINI_API_KEY")) {
+                storyResult.textContent = '이야기 생성 기능을 사용하려면 선생님의 Gemini API 키가 필요해요!';
+                return;
+            }
+
+            const k1 = keyword1.value.trim();
+            const k2 = keyword2.value.trim();
+            const k3 = keyword3.value.trim();
+
+            if (!k1 || !k2 || !k3) {
+                storyResult.textContent = '세 가지 단어를 모두 입력해주세요!';
+                return;
+            }
+            
+            btnText.textContent = '이야기 만드는 중...';
+            btnSpinner.classList.remove('hidden');
+            generateStoryBtn.disabled = true;
+
+            const prompt = `신비한 동굴을 탐험하는 로봇 자동차에 대한 이야기야. '${k1}', '${k2}', '${k3}' 단어를 꼭 넣어서, 초등학생이 좋아할 만한 짧고 재미있는 이야기를 만들어 줘.`;
+            
+            try {
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+                
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                });
+
+                const responseData = await response.json();
+
+                if (!response.ok) {
+                    const errorDetails = responseData.error?.message || JSON.stringify(responseData);
+                    throw new Error(errorDetails);
+                }
+                
+                if (responseData.candidates && responseData.candidates[0]?.content?.parts?.[0]?.text) {
+                    const text = responseData.candidates[0].content.parts[0].text;
+                    storyResult.textContent = text;
+                } else {
+                    storyResult.textContent = '이야기를 만들지 못했어요. 응답 형식이 올바르지 않아요.';
+                }
+            } catch (error) {
+                console.error("Error generating story:", error);
+                let errorMessage = `이야기 생성 중 오류가 발생했어요.`;
+                 if (error.message.includes("API key not valid")) {
+                    errorMessage = "오류: API 키가 올바르지 않아요. Google AI Studio에서 키를 다시 확인해주세요.";
+                } else if (error.message.includes("permission denied") || error.message.includes("API has not been used")) {
+                    errorMessage = "오류: API를 사용할 권한이 없어요. Google Cloud에서 'Generative Language API'가 '사용 설정' 되었는지 확인해주세요.";
+                } else if (error.message.includes("Billing") || error.message.includes("billing account")) {
+                     errorMessage = "오류: 구글 클라우드 프로젝트에 결제 계정이 연결되어야 합니다.";
+                } else {
+                    errorMessage += ` 인터넷 연결을 확인하거나, 잠시 후 다시 시도해주세요. (상세 오류: ${error.message})`;
+                }
+                storyResult.textContent = errorMessage;
+            } finally {
+                btnText.textContent = '신나는 이야기 만들기!';
+                btnSpinner.classList.add('hidden');
+                generateStoryBtn.disabled = false;
+                await saveState(); 
+            }
+        };
+
+        taskItems.forEach(item => {
+            item.addEventListener('click', () => {
+                item.classList.toggle('completed');
+                updateProgress();
+                saveState();
+            });
+        });
+
+        generateStoryBtn.addEventListener('click', handleGenerateStory);
+        
+        studentNameEl.addEventListener('blur', saveState);
+        thought1.addEventListener('input', saveState);
+        thought2.addEventListener('input', saveState);
+
+        themeSelector.addEventListener('click', (e) => {
+            if (e.target.tagName === 'BUTTON') {
+                const theme = e.target.dataset.theme;
+                applyTheme(theme);
+                saveState();
+            }
+        });
+
+        // Firebase가 설정된 경우에만 인증 및 데이터 로딩 실행
+        if (auth) {
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    userId = user.uid;
+                    userDocRef = doc(db, `artifacts/${appId}/public/data/students`, userId);
+                    onSnapshot(userDocRef, (docSnap) => {
+                        if (docSnap.exists()) {
+                            loadState(docSnap.data());
+                        } else {
+                            console.log("No previous data found. Creating new document.");
+                            saveState(); 
+                        }
+                    }, (error) => {
+                        console.error("Error with onSnapshot:", error);
+                        alert("데이터를 불러오는데 실패했습니다. Firestore 보안 규칙을 확인해주세요.");
+                    });
+                } else {
+                     signInAnonymously(auth).catch((error) => {
+                        console.error("Anonymous sign-in failed:", error);
+                        alert("익명 로그인에 실패했습니다. Firebase 설정을 확인해주세요.");
+                     });
+                }
+            });
+        } else {
+            alert("Firebase가 제대로 설정되지 않았습니다. 코드를 확인해주세요.");
+        }
+        
+    </script>
+</body>
+</html>
