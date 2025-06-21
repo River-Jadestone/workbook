@@ -166,7 +166,6 @@
             <div class="lg:col-span-3 bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition-shadow duration-300">
                 <h2 class="text-2xl font-bold text-center text-[#2c3e50] mb-6">🛠️ 로봇과의 코딩 약속 (흐름도)</h2>
                 <div class="flex flex-col items-center space-y-4">
-                    <!-- "컬러센서로" 명시 -->
                     <div class="text-center flow-item flex flex-col items-center">
                         <div class="bg-[#f1c40f] text-white rounded-full w-28 h-28 flex items-center justify-center text-center font-bold text-lg p-2 shadow-md">컬러센서로<br>주문 받기</div>
                         <div class="w-1 h-6 bg-gray-300"></div>
@@ -175,11 +174,9 @@
                         </div>
                         <div class="w-1 h-6 bg-gray-300"></div>
                     </div>
-                    
                     <div class="w-full grid grid-cols-1 md:grid-cols-2 gap-6 text-center">
                         <div>
                             <p class="font-bold text-green-600 mb-2">✅ 네 (성공)</p>
-                            <!-- [수정됨] 디스플레이에 음식 이름 표시 -->
                             <div class="bg-green-50 border-2 border-green-200 p-4 rounded-lg shadow-sm space-y-2">
                                 <p>1. 디스플레이에 '음식 이름'</p>
                                 <p>2. 모터가 앞으로!</p>
@@ -201,7 +198,6 @@
             <!-- 미션 섹션 -->
             <div class="bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition-shadow duration-300">
                 <h2 class="text-2xl font-bold text-[#2c3e50] mb-4">🎯 미션 시작!</h2>
-                <!-- [수정됨] 디스플레이에 음식 이름 표시 -->
                 <div class="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-r-lg mb-6">
                     <h3 class="font-bold text-lg text-blue-800">기본 미션</h3>
                     <p class="text-blue-700 mt-1">1. 내가 정한 색깔에 맞춰 모터가 앞으로~ 뒤로~ 움직이게 해요.</p>
@@ -253,7 +249,7 @@
     <!-- 자바스크립트 코드 시작 -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // ===================================================================================
@@ -266,13 +262,11 @@
             apiKey: "AIzaSyAvLt0F8gSqe24Gf0xHHw25MfMirmV6er0",
             authDomain: "workbook-c77c1.firebaseapp.com",
             projectId: "workbook-c77c1",
-            storageBucket: "workbook-c77c1.firebasestorage.app",
+            storageBucket: "workbook-c77c1.appspot.com",
             messagingSenderId: "763395615278",
-            appId: "1:763395615278:web:8f245f9b328440f0a54dbf",
-            measurementId: "G-M1GP1JRRVV"
+            appId: "1:763395615278:web:8f245f9b328440f0a54dbf"
         };
         
-        // 각 워크북을 구별하기 위한 고유한 ID. 다른 주제로 만들 땐 이 값을 바꿔주세요.
         const appId = 'snack-shop-workbook';
         
         let app, db, auth;
@@ -384,7 +378,7 @@
             // ===================================================================================
             const apiKey = "AIzaSyAXzzqTgvvl5uvM9a1R1C2GaK7GG3Y48pw";
 
-            if (apiKey === "AIzaSyAXzzqTgvvl5uvM9a1R1C2GaK7GG3Y48pw" && typeof __gmn_api_key === 'undefined') {
+            if (apiKey === "AIzaSyAXzzqTgvvl5uvM9a1R1C2GaK7GG3Y48pw") {
                 storyResult.textContent = '이야기 생성 기능을 사용하려면 선생님의 Gemini API 키가 필요해요!';
                 return;
             }
@@ -405,10 +399,7 @@
             const prompt = `알록달록 스낵 가게에서 일하는 로봇에 대한 이야기야. '${k1}', '${k2}', '${k3}' 단어를 꼭 넣어서, 초등학생이 좋아할 만한 짧고 재미있는 이야기를 만들어 줘.`;
             
             try {
-                // 이 개발 환경에서는 __gmn_api_key가, 외부에서는 apiKey가 사용됩니다.
-                const finalApiKey = typeof __gmn_api_key !== 'undefined' ? __gmn_api_key : apiKey;
-
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${finalApiKey}`;
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
                 
                 const response = await fetch(apiUrl, {
                     method: 'POST',
@@ -416,32 +407,30 @@
                     body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
                 });
 
-                if (!response.ok) {
-                    const errorBody = await response.json().catch(() => ({ error: { message: "알 수 없는 오류가 발생했습니다." } }));
-                    throw new Error(errorBody.error.message);
-                }
+                const responseData = await response.json();
 
-                const result = await response.json();
+                if (!response.ok) {
+                    const errorDetails = responseData.error?.message || JSON.stringify(responseData);
+                    throw new Error(errorDetails);
+                }
                 
-                if (result.candidates && result.candidates[0]?.content?.parts?.[0]?.text) {
-                    const text = result.candidates[0].content.parts[0].text;
+                if (responseData.candidates && responseData.candidates[0]?.content?.parts?.[0]?.text) {
+                    const text = responseData.candidates[0].content.parts[0].text;
                     storyResult.textContent = text;
                 } else {
-                    storyResult.textContent = '이야기를 만들지 못했어요. 다시 시도해 보세요.';
+                    storyResult.textContent = '이야기를 만들지 못했어요. 응답 형식이 올바르지 않아요.';
                 }
             } catch (error) {
                 console.error("Error generating story:", error);
                 let errorMessage = `이야기 생성 중 오류가 발생했어요.`;
                  if (error.message.includes("API key not valid")) {
                     errorMessage = "오류: API 키가 올바르지 않아요. Google AI Studio에서 키를 다시 확인해주세요.";
-                } else if (error.message.includes("permission") || error.message.includes("API has not been used")) {
+                } else if (error.message.includes("permission denied") || error.message.includes("API has not been used")) {
                     errorMessage = "오류: API를 사용할 권한이 없어요. Google Cloud에서 'Generative Language API'가 '사용 설정' 되었는지 확인해주세요.";
-                } else if (error.message.includes("Billing")) {
-                     errorMessage = "오류: 구글 클라우드 프로젝트에 결제 계정이 연결되어야 할 수 있어요. (실제 비용이 청구되지 않을 수 있습니다)";
-                } else if (error.message.includes("found no valid api key")) {
-                    errorMessage = "오류: API 키를 찾을 수 없어요. 코드에 API 키를 정확히 입력했는지 확인해주세요."
+                } else if (error.message.includes("Billing") || error.message.includes("billing account")) {
+                     errorMessage = "오류: 구글 클라우드 프로젝트에 결제 계정이 연결되어야 합니다. (실제 비용이 바로 청구되지는 않습니다)";
                 } else {
-                    errorMessage += ` 인터넷 연결을 확인하거나, 잠시 후 다시 시도해주세요. (${error.message})`;
+                    errorMessage += ` 인터넷 연결을 확인하거나, 잠시 후 다시 시도해주세요. (오류 메시지: ${error.message})`;
                 }
                 storyResult.textContent = errorMessage;
             } finally {
