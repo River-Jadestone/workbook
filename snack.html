@@ -378,7 +378,7 @@
             // ===================================================================================
             const apiKey = "AIzaSyAXzzqTgvvl5uvM9a1R1C2GaK7GG3Y48pw";
 
-            if (apiKey === "AIzaSyAXzzqTgvvl5uvM9a1R1C2GaK7GG3Y48pw") {
+            if (apiKey.includes("YOUR_GEMINI_API_KEY")) {
                 storyResult.textContent = '이야기 생성 기능을 사용하려면 선생님의 Gemini API 키가 필요해요!';
                 return;
             }
@@ -410,6 +410,7 @@
                 const responseData = await response.json();
 
                 if (!response.ok) {
+                    // [수정됨] 오류가 발생하면, 서버가 보내준 상세한 오류 메시지를 그대로 담아서 throw 합니다.
                     const errorDetails = responseData.error?.message || JSON.stringify(responseData);
                     throw new Error(errorDetails);
                 }
@@ -421,16 +422,22 @@
                     storyResult.textContent = '이야기를 만들지 못했어요. 응답 형식이 올바르지 않아요.';
                 }
             } catch (error) {
-                console.error("Error generating story:", error);
-                let errorMessage = `이야기 생성 중 오류가 발생했어요.`;
+                // [수정됨] 오류 메시지를 훨씬 더 자세하게 보여줍니다.
+                console.error("==================== Detailed Story Generation Error ====================");
+                console.error("Error Object:", error);
+                console.error("=========================================================================");
+
+                let errorMessage = `이야기 생성 중 오류가 발생했어요.\n\n`;
                  if (error.message.includes("API key not valid")) {
-                    errorMessage = "오류: API 키가 올바르지 않아요. Google AI Studio에서 키를 다시 확인해주세요.";
+                    errorMessage += "원인: API 키가 올바르지 않은 것 같아요.\n해결책: Google AI Studio에서 키를 다시 복사해서 붙여넣어 보세요.";
                 } else if (error.message.includes("permission denied") || error.message.includes("API has not been used")) {
-                    errorMessage = "오류: API를 사용할 권한이 없어요. Google Cloud에서 'Generative Language API'가 '사용 설정' 되었는지 확인해주세요.";
+                    errorMessage += "원인: API를 사용할 권한이 없어요.\n해결책: Google Cloud에서 'Generative Language API'가 '사용 설정' 되었는지 확인해주세요.";
                 } else if (error.message.includes("Billing") || error.message.includes("billing account")) {
-                     errorMessage = "오류: 구글 클라우드 프로젝트에 결제 계정이 연결되어야 합니다. (실제 비용이 바로 청구되지는 않습니다)";
+                     errorMessage += "원인: 구글 클라우드 프로젝트에 결제 계정이 연결되어야 합니다.\n해결책: Google Cloud 결제 페이지에서 프로젝트에 결제 수단을 연결해주세요.";
+                } else if (error.message.includes("key is restricted")) {
+                     errorMessage += "원인: API 키에 사용처 제한이 걸려있어요.\n해결책: Google Cloud의 '사용자 인증 정보'에서 API 키 제한사항을 '없음'으로 변경해주세요.";
                 } else {
-                    errorMessage += ` 인터넷 연결을 확인하거나, 잠시 후 다시 시도해주세요. (오류 메시지: ${error.message})`;
+                    errorMessage += `자세한 내용은 개발자 도구(F12)의 Console 탭을 확인해주세요. (상세 오류: ${error.message})`;
                 }
                 storyResult.textContent = errorMessage;
             } finally {
