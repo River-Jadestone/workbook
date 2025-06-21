@@ -41,13 +41,12 @@
 
         <!-- 학생 현황 상세 화면 -->
         <div id="student-details-view" class="view">
-            <header class="mb-10">
-                <button id="backButton" class="bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors">
+            <!-- [수정됨] 헤더 레이아웃 변경: flex와 absolute를 이용해 버튼과 제목이 겹치지 않도록 수정 -->
+            <header class="relative flex items-center justify-center mb-10 py-4">
+                <button id="backButton" class="absolute left-0 bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors">
                     &larr; 뒤로 가기
                 </button>
-                <div class="text-center -mt-10">
-                    <h1 id="details-title" class="text-4xl md:text-5xl font-black text-[#2c3e50]"></h1>
-                </div>
+                <h1 id="details-title" class="text-2xl md:text-4xl font-black text-[#2c3e50] text-center"></h1>
             </header>
             <main class="space-y-8">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
@@ -73,13 +72,15 @@
         import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- Firebase 기본 설정 ---
-        let firebaseConfig;
-        try {
-            firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : { apiKey: "DEMO", authDomain: "DEMO", projectId: "DEMO" };
-        } catch (e) {
-            console.error("Firebase config is not valid JSON:", __firebase_config);
-            firebaseConfig = { apiKey: "DEMO", authDomain: "DEMO", projectId: "DEMO" };
-        }
+        // [수정됨] storageBucket 주소 형식을 표준에 맞게 변경하고, 사용하지 않는 measurementId를 제거했습니다.
+        const firebaseConfig = {
+            apiKey: "AIzaSyAvLt0F8gSqe24Gf0xHHw25MfMirmV6er0",
+            authDomain: "workbook-c77c1.firebaseapp.com",
+            projectId: "workbook-c77c1",
+            storageBucket: "workbook-c77c1.appspot.com",
+            messagingSenderId: "763395615278",
+            appId: "1:763395615278:web:8f245f9b328440f0a54dbf"
+        };
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const auth = getAuth(app);
