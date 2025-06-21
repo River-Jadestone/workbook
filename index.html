@@ -30,68 +30,59 @@
         .modal-content {
             transition: transform 0.3s ease;
         }
-        /* 완료된 체크리스트 스타일 */
-        .detail-task-item.completed {
-            text-decoration: line-through;
-            color: #6b7280;
-        }
-        .detail-task-item.completed .checkbox-icon {
-            background-color: #4CAF50;
-            color: white;
-            border-radius: 50%;
-        }
     </style>
 </head>
 <body class="text-gray-800">
 
-    <div class="container mx-auto p-4 md:p-8">
-        <!-- 1. 워크북 선택 화면 -->
-        <div id="workbook-selection-view" class="view" style="display: block;">
-            <header class="text-center mb-10">
-                <h1 class="text-4xl md:text-5xl font-black text-[#2c3e50]">🚀 전체 워크북 목록</h1>
-                <p class="text-lg text-[#34495e] mt-2 font-bold">확인하고 싶은 워크북을 선택하세요.</p>
-            </header>
-            <main id="workbook-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <!-- 자바스크립트로 워크북 목록이 여기에 채워집니다. -->
-            </main>
+    <!-- [신규 기능] 비밀번호 입력 화면 -->
+    <div id="password-view" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center p-4">
+        <div class="bg-white p-8 rounded-2xl shadow-2xl text-center w-full max-w-sm">
+            <h2 class="text-2xl font-bold mb-4">🔒 관리자 인증</h2>
+            <p class="text-gray-600 mb-6">대시보드에 접속하려면 비밀번호를 입력하세요.</p>
+            <input type="password" id="password-input" class="w-full p-3 border-2 border-gray-300 rounded-lg text-center mb-4 focus:ring-2 focus:ring-blue-500" placeholder="비밀번호">
+            <button id="password-submit-btn" class="w-full bg-blue-500 text-white font-bold py-3 rounded-lg hover:bg-blue-600 transition-colors">접속하기</button>
+            <p id="password-error" class="text-red-500 mt-4 h-5"></p>
         </div>
+    </div>
+    
+    <!-- 메인 대시보드 콘텐츠 (처음에는 숨겨져 있음) -->
+    <div id="main-dashboard" class="hidden">
+        <div class="container mx-auto p-4 md:p-8">
+            <!-- 워크북 선택 화면 -->
+            <div id="workbook-selection-view" class="view" style="display: block;">
+                <header class="text-center mb-10">
+                    <h1 class="text-4xl md:text-5xl font-black text-[#2c3e50]">🚀 전체 워크북 목록</h1>
+                    <p class="text-lg text-[#34495e] mt-2 font-bold">확인하고 싶은 워크북을 선택하세요.</p>
+                </header>
+                <main id="workbook-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- 자바스크립트로 워크북 목록이 여기에 채워집니다. -->
+                </main>
+            </div>
 
-        <!-- 2. 학생 목록 화면 -->
-        <div id="student-list-view" class="view">
-            <header class="relative flex items-center justify-center mb-10 py-4">
-                <button id="back-to-selection-btn" class="absolute left-0 bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors">
-                    &larr; 목록으로
-                </button>
-                <h1 id="list-title" class="text-2xl md:text-4xl font-black text-[#2c3e50] text-center"></h1>
-            </header>
-            <main class="space-y-8">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                    <div class="bg-white p-6 rounded-2xl shadow-lg text-center">
-                        <h2 class="text-xl font-bold text-gray-500">총 참여 학생 수</h2>
-                        <p id="totalStudents" class="text-5xl font-extrabold text-[#3498db]">0</p>
+            <!-- 학생 현황 상세 화면 -->
+            <div id="student-details-view" class="view">
+                <header class="relative flex items-center justify-center mb-10 py-4">
+                    <button id="backButton" class="absolute left-0 bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors">
+                        &larr; 뒤로 가기
+                    </button>
+                    <h1 id="details-title" class="text-2xl md:text-4xl font-black text-[#2c3e50] text-center"></h1>
+                </header>
+                <main class="space-y-8">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                        <div class="bg-white p-6 rounded-2xl shadow-lg text-center">
+                            <h2 class="text-xl font-bold text-gray-500">총 참여 학생 수</h2>
+                            <p id="totalStudents" class="text-5xl font-extrabold text-[#3498db]">0</p>
+                        </div>
+                        <div class="bg-white p-6 rounded-2xl shadow-lg text-center">
+                            <h2 class="text-xl font-bold text-gray-500">전체 평균 진행률</h2>
+                            <p id="averageProgress" class="text-5xl font-extrabold text-[#4ECDC4]">0%</p>
+                        </div>
                     </div>
-                    <div class="bg-white p-6 rounded-2xl shadow-lg text-center">
-                        <h2 class="text-xl font-bold text-gray-500">전체 평균 진행률</h2>
-                        <p id="averageProgress" class="text-5xl font-extrabold text-[#4ECDC4]">0%</p>
+                    <div id="studentList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <!-- 자바스크립트로 학생 카드 목록이 여기에 채워집니다. -->
                     </div>
-                </div>
-                <div id="studentListContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <!-- 자바스크립트로 학생 카드 목록이 여기에 채워집니다. -->
-                </div>
-            </main>
-        </div>
-
-        <!-- 3. 학생 상세 정보 화면 -->
-        <div id="single-student-view" class="view">
-             <header class="relative flex items-center justify-center mb-10 py-4">
-                <button id="back-to-list-btn" class="absolute left-0 bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors">
-                    &larr; 학생 목록으로
-                </button>
-                <h1 id="detail-student-name" class="text-2xl md:text-4xl font-black text-[#2c3e50] text-center"></h1>
-            </header>
-            <main id="student-detail-content" class="space-y-8 max-w-4xl mx-auto">
-                 <!-- 학생 상세 정보가 여기에 채워집니다. -->
-            </main>
+                </main>
+            </div>
         </div>
     </div>
 
@@ -113,6 +104,7 @@
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, onSnapshot, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
+        // --- Firebase 기본 설정 ---
         const firebaseConfig = {
             apiKey: "AIzaSyAvLt0F8gSqe24Gf0xHHw25MfMirmV6er0",
             authDomain: "workbook-c77c1.firebaseapp.com",
@@ -121,35 +113,21 @@
             messagingSenderId: "763395615278",
             appId: "1:763395615278:web:8f245f9b328440f0a54dbf"
         };
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
+        let app, db, auth;
         
-        const workbooks = [
-            { 
-                id: 'snack-shop-workbook', 
-                name: '🌈 알록달록 스낵 가게 만들기',
-                checklistItems: [
-                    "스낵 가게 로봇을 뚝딱뚝딱 조립했어요.",
-                    "내 가게의 규칙을 정하고 코딩 약속을 했어요.",
-                    "색깔에 맞춰 과자를 주는 기본 코딩을 완성했어요.",
-                    "더 멋진 기능을 만드는 도전 미션에 성공했어요!",
-                    "AI 친구와 함께 재미있는 이야기를 만들었어요.",
-                    "친구들에게 내 스낵 가게를 멋지게 자랑했어요."
-                ]
-            },
-        ];
-        
+        // --- UI 요소 변수 ---
+        const passwordView = document.getElementById('password-view');
+        const mainDashboard = document.getElementById('main-dashboard');
+        const passwordInput = document.getElementById('password-input');
+        const passwordSubmitBtn = document.getElementById('password-submit-btn');
+        const passwordError = document.getElementById('password-error');
+
         const workbookSelectionView = document.getElementById('workbook-selection-view');
-        const studentListView = document.getElementById('student-list-view');
-        const singleStudentView = document.getElementById('single-student-view');
+        const studentDetailsView = document.getElementById('student-details-view');
         const workbookListContainer = document.getElementById('workbook-list');
-        const studentListContainer = document.getElementById('studentListContainer');
-        const backToSelectionBtn = document.getElementById('back-to-selection-btn');
-        const backToListBtn = document.getElementById('back-to-list-btn');
-        const listTitle = document.getElementById('list-title');
-        const detailStudentName = document.getElementById('detail-student-name');
-        const studentDetailContent = document.getElementById('student-detail-content');
+        const studentListContainer = document.getElementById('studentList');
+        const backButton = document.getElementById('backButton');
+        const detailsTitle = document.getElementById('details-title');
         const totalStudentsEl = document.getElementById('totalStudents');
         const averageProgressEl = document.getElementById('averageProgress');
         const deleteModal = document.getElementById('delete-confirmation-modal');
@@ -158,50 +136,113 @@
         const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
 
         let currentSnapshotUnsubscribe = null;
-        let currentWorkbook = null; 
-        let studentIdToDelete = null;
+        let currentWorkbookId = null;
+        let studentIdToDelete = null; 
 
-        const showView = (viewToShow) => {
-            document.querySelectorAll('.view').forEach(v => v.style.display = 'none');
-            viewToShow.style.display = 'block';
+        // ===================================================================================
+        // ** 중요! **
+        // 새로운 워크북을 만들 때마다 아래 workbooks 배열에 정보를 추가해주세요.
+        // ===================================================================================
+        const workbooks = [
+            { id: 'snack-shop-workbook', name: '🌈 알록달록 스낵 가게 만들기' },
+        ];
+        
+        /**
+         * 비밀번호를 확인하고 대시보드를 보여주는 함수
+         */
+        function checkPassword() {
+            const enteredPassword = passwordInput.value;
+            if (enteredPassword === 'lego') {
+                passwordView.style.display = 'none';
+                mainDashboard.style.display = 'block';
+                initializeDashboard();
+            } else {
+                passwordError.textContent = '비밀번호가 올바르지 않습니다.';
+                passwordInput.value = '';
+            }
+        }
+
+        /**
+         * 비밀번호 인증 성공 후 대시보드를 초기화하는 함수
+         */
+        function initializeDashboard() {
+            try {
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+            } catch (e) {
+                console.error("Firebase 초기화에 실패했습니다.", e);
+                alert("Firebase 초기화에 실패했습니다. 설정을 확인해주세요.");
+                return;
+            }
+
+            // 워크북 목록을 화면에 그림
+            workbookListContainer.innerHTML = '';
+            workbooks.forEach(wb => {
+                const wbCard = document.createElement('div');
+                wbCard.className = "bg-white p-8 rounded-2xl shadow-lg text-center cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300";
+                wbCard.innerHTML = `<h2 class="text-2xl font-bold text-[#2c3e50]">${wb.name}</h2>`;
+                wbCard.addEventListener('click', () => showStudentDetails(wb));
+                workbookListContainer.appendChild(wbCard);
+            });
+        
+            // Firebase 인증
+            onAuthStateChanged(auth, (user) => {
+                if (!user) {
+                    signInAnonymously(auth).catch((error) => console.error("Anonymous sign-in failed:", error));
+                }
+            });
+        }
+        
+        const showWorkbookSelection = () => {
+            workbookSelectionView.style.display = 'block';
+            studentDetailsView.style.display = 'none';
+            if (currentSnapshotUnsubscribe) {
+                currentSnapshotUnsubscribe();
+                currentSnapshotUnsubscribe = null;
+            }
+            currentWorkbookId = null;
         };
 
         const showStudentDetails = (workbook) => {
-            currentWorkbook = workbook;
-            showView(studentListView);
-            listTitle.textContent = workbook.name;
+            currentWorkbookId = workbook.id;
+            workbookSelectionView.style.display = 'none';
+            studentDetailsView.style.display = 'block';
+            detailsTitle.textContent = workbook.name;
             studentListContainer.innerHTML = '<p class="text-center md:col-span-2 lg:col-span-3 text-gray-500">학생 데이터를 불러오는 중입니다...</p>';
             totalStudentsEl.textContent = '0';
             averageProgressEl.textContent = '0%';
 
-            const studentsColRef = collection(db, `artifacts/${workbook.id}/public/data/students`);
+            const studentsColRef = collection(db, `artifacts/${currentWorkbookId}/public/data/students`);
             
-            if (currentSnapshotUnsubscribe) currentSnapshotUnsubscribe();
             currentSnapshotUnsubscribe = onSnapshot(studentsColRef, (snapshot) => {
                 const studentsData = [];
-                snapshot.forEach((doc) => studentsData.push([doc.id, doc.data()]));
+                snapshot.forEach((doc) => {
+                    studentsData.push([doc.id, doc.data()]);
+                });
                 updateDashboard(studentsData);
             }, (error) => {
-                console.error(`Error fetching data for ${workbook.id}:`, error);
-                studentListContainer.innerHTML = `<p class="text-center md:col-span-2 lg:col-span-3 text-red-500">"${workbook.name}" 워크북 데이터를 불러오는 중 오류가 발생했습니다.</p>`;
+                console.error(`Error fetching data for ${currentWorkbookId}:`, error);
+                studentListContainer.innerHTML = `<p class="text-center md:col-span-2 lg:col-span-3 text-red-500">"${workbook.name}" 워크북 데이터를 불러오는 중 오류가 발생했습니다. 권한을 확인해주세요.</p>`;
             });
         };
 
         const createStudentCard = (studentId, studentData) => {
             const studentName = studentData.studentName || '이름 없음';
-            const totalTasks = currentWorkbook.checklistItems.length;
-            const completedCount = (studentData.completedTasks || []).filter(Boolean).length;
+            const studentIdShort = studentId.substring(0, 8);
+            const completedTasks = studentData.completedTasks || [];
+            const totalTasks = 7; 
+            const completedCount = completedTasks.filter(Boolean).length;
             const progress = totalTasks > 0 ? (completedCount / totalTasks) * 100 : 0;
-
+            const story = (studentData.savedStory || '아직 이야기가 없어요.').replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            
             const card = document.createElement('div');
-            card.className = "bg-white rounded-2xl shadow-lg p-6 flex flex-col justify-between cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all";
-            card.dataset.studentId = studentId;
-
+            card.className = "bg-white rounded-2xl shadow-lg p-6 flex flex-col justify-between";
             card.innerHTML = `
                 <div class="space-y-4">
                     <div>
-                        <h3 class="font-bold text-xl text-[#2c3e50] truncate">${studentName}</h3>
-                        <p class="text-sm text-gray-400">ID: ${studentId.substring(0, 8)}...</p>
+                        <h3 class="font-bold text-xl text-[#2c3e50] truncate" title="${studentId}">${studentName}</h3>
+                        <p class="text-sm text-gray-400">ID: ${studentIdShort}...</p>
                     </div>
                     <div>
                         <p class="font-semibold text-gray-600">진행률: ${Math.round(progress)}%</p>
@@ -209,8 +250,14 @@
                             <div class="bg-gradient-to-r from-[#3498db] to-[#4ECDC4] h-4 rounded-full" style="width: ${progress}%"></div>
                         </div>
                     </div>
+                    <div class="space-y-2">
+                        <div>
+                            <h4 class="font-bold text-gray-700">🤖 AI 친구 이야기:</h4>
+                            <p class="text-sm bg-gray-100 p-2 rounded-md max-h-24 overflow-y-auto">${story}</p>
+                        </div>
+                    </div>
                 </div>
-                <button data-id="${studentId}" data-name="${studentName}" class="delete-btn mt-6 w-full bg-red-100 text-red-700 font-bold py-2 px-3 rounded-lg hover:bg-red-200 transition-colors">삭제</button>
+                <button data-id="${studentId}" data-name="${studentName}" class="delete-btn mt-4 w-full bg-red-100 text-red-700 font-bold py-2 px-3 rounded-lg hover:bg-red-200 transition-colors">삭제</button>
             `;
             return card;
         };
@@ -225,69 +272,19 @@
 
             students.sort((a, b) => (a[1].studentName || '').localeCompare(b[1].studentName || '', 'ko'));
 
-            const studentDataMap = new Map(students);
-            
-            studentDataMap.forEach((data, id) => {
+            students.forEach(([id, data]) => {
                 const card = createStudentCard(id, data);
-                card.addEventListener('click', (e) => {
-                    if (!e.target.classList.contains('delete-btn')) {
-                       showSingleStudentDetail(data);
-                    }
-                });
                 studentListContainer.appendChild(card);
                 
-                const totalTasks = currentWorkbook.checklistItems.length;
-                const completedCount = (data.completedTasks || []).filter(Boolean).length;
+                const completedTasks = data.completedTasks || [];
+                const totalTasks = 7;
+                const completedCount = completedTasks.filter(Boolean).length;
                 totalProgress += totalTasks > 0 ? (completedCount / totalTasks) * 100 : 0;
             });
             
             totalStudentsEl.textContent = students.length;
             const avgProgress = students.length > 0 ? totalProgress / students.length : 0;
             averageProgressEl.textContent = `${Math.round(avgProgress)}%`;
-        };
-
-        const showSingleStudentDetail = (studentData) => {
-            detailStudentName.textContent = studentData.studentName || '이름 없음';
-            
-            let checklistHTML = '';
-            currentWorkbook.checklistItems.forEach((itemText, index) => {
-                const isCompleted = studentData.completedTasks?.[index] || false;
-                checklistHTML += `
-                    <li class="detail-task-item flex items-center p-3 bg-slate-100 rounded-lg ${isCompleted ? 'completed' : ''}">
-                        <div class="checkbox-icon w-6 h-6 mr-4 flex-shrink-0 flex items-center justify-center font-bold">${isCompleted ? '✔' : '✖'}</div>
-                        <span>${itemText}</span>
-                    </li>
-                `;
-            });
-            
-            const story = (studentData.savedStory || '아직 이야기가 없어요.').replace(/</g, "&lt;").replace(/>/g, "&gt;");
-            const thought1 = (studentData.savedThoughts?.[0] || '').replace(/</g, "&lt;").replace(/>/g, "&gt;");
-            const thought2 = (studentData.savedThoughts?.[1] || '').replace(/</g, "&lt;").replace(/>/g, "&gt;");
-
-            studentDetailContent.innerHTML = `
-                <div class="bg-white rounded-2xl shadow-lg p-6">
-                    <h2 class="text-2xl font-bold text-[#2c3e50] mb-4">✅ 활동 체크리스트</h2>
-                    <ul class="space-y-3">${checklistHTML}</ul>
-                </div>
-                <div class="bg-white rounded-2xl shadow-lg p-6">
-                    <h2 class="text-2xl font-bold text-[#2c3e50] mb-4">🚀 AI 친구가 만든 이야기</h2>
-                    <div class="p-4 bg-gray-100 rounded-md min-h-[100px] whitespace-pre-wrap">${story}</div>
-                </div>
-                <div class="bg-white rounded-2xl shadow-lg p-6">
-                    <h2 class="text-2xl font-bold text-[#2c3e50] mb-4">🤔 생각 나누기</h2>
-                    <div class="space-y-4">
-                        <div>
-                            <h3 class="font-semibold text-gray-700 mb-1">오늘 내가 만든 스낵 가게 로봇의 최고로 멋진 점은 무엇인가요?</h3>
-                            <p class="p-3 bg-gray-100 rounded-md min-h-[60px]">${thought1 || '아직 작성하지 않았어요.'}</p>
-                        </div>
-                        <div>
-                            <h3 class="font-semibold text-gray-700 mb-1">이 멋진 로봇이 우리 집이나 학교에 있다면, 무엇을 도와줄 수 있을까요?</h3>
-                            <p class="p-3 bg-gray-100 rounded-md min-h-[60px]">${thought2 || '아직 작성하지 않았어요.'}</p>
-                        </div>
-                    </div>
-                </div>
-            `;
-            showView(singleStudentView);
         };
         
         const openDeleteModal = (studentId, studentName) => {
@@ -301,19 +298,15 @@
             deleteModal.classList.add('hidden');
         };
 
-        // --- 초기화 및 이벤트 리스너 ---
-        
-        workbookListContainer.innerHTML = '';
-        workbooks.forEach(wb => {
-            const wbCard = document.createElement('div');
-            wbCard.className = "bg-white p-8 rounded-2xl shadow-lg text-center cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300";
-            wbCard.innerHTML = `<h2 class="text-2xl font-bold text-[#2c3e50]">${wb.name}</h2>`;
-            wbCard.addEventListener('click', () => showStudentDetails(wb));
-            workbookListContainer.appendChild(wbCard);
+        // --- 이벤트 리스너 설정 ---
+        passwordSubmitBtn.addEventListener('click', checkPassword);
+        passwordInput.addEventListener('keyup', (event) => {
+            if (event.key === 'Enter') {
+                checkPassword();
+            }
         });
-        
-        backToSelectionBtn.addEventListener('click', () => showView(workbookSelectionView));
-        backToListBtn.addEventListener('click', () => showView(studentListView));
+
+        backButton.addEventListener('click', showWorkbookSelection);
 
         studentListContainer.addEventListener('click', (e) => {
             const deleteButton = e.target.closest('.delete-btn');
@@ -326,8 +319,8 @@
 
         cancelDeleteBtn.addEventListener('click', closeDeleteModal);
         confirmDeleteBtn.addEventListener('click', async () => {
-            if (studentIdToDelete && currentWorkbook) {
-                const docRef = doc(db, `artifacts/${currentWorkbook.id}/public/data/students`, studentIdToDelete);
+            if (studentIdToDelete && currentWorkbookId) {
+                const docRef = doc(db, `artifacts/${currentWorkbookId}/public/data/students`, studentIdToDelete);
                 try {
                     await deleteDoc(docRef);
                 } catch (error) {
@@ -336,12 +329,6 @@
                 } finally {
                     closeDeleteModal();
                 }
-            }
-        });
-        
-        onAuthStateChanged(auth, (user) => {
-            if (!user) {
-                signInAnonymously(auth).catch((error) => console.error("Anonymous sign-in failed:", error));
             }
         });
 
