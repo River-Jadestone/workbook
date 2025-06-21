@@ -23,6 +23,13 @@
             from { opacity: 0; }
             to { opacity: 1; }
         }
+        /* 삭제 확인 모달 창 스타일 */
+        .modal-overlay {
+            transition: opacity 0.3s ease;
+        }
+        .modal-content {
+            transition: transform 0.3s ease;
+        }
     </style>
 </head>
 <body class="text-gray-800">
@@ -41,7 +48,6 @@
 
         <!-- 학생 현황 상세 화면 -->
         <div id="student-details-view" class="view">
-            <!-- [수정됨] 헤더 레이아웃 변경: flex와 absolute를 이용해 버튼과 제목이 겹치지 않도록 수정 -->
             <header class="relative flex items-center justify-center mb-10 py-4">
                 <button id="backButton" class="absolute left-0 bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors">
                     &larr; 뒤로 가기
@@ -66,21 +72,32 @@
         </div>
     </div>
 
+    <!-- [신규 기능] 삭제 확인 모달 창 -->
+    <div id="delete-confirmation-modal" class="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden">
+        <div class="modal-content bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full transform scale-95">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">정말 삭제하시겠습니까?</h2>
+            <p id="delete-confirmation-text" class="text-gray-600 mb-6"></p>
+            <div class="flex justify-end space-x-4">
+                <button id="cancel-delete-btn" class="px-6 py-2 rounded-lg bg-gray-200 text-gray-800 font-semibold hover:bg-gray-300 transition-colors">취소</button>
+                <button id="confirm-delete-btn" class="px-6 py-2 rounded-lg bg-red-500 text-white font-semibold hover:bg-red-600 transition-colors">삭제</button>
+            </div>
+        </div>
+    </div>
+
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, onSnapshot, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- Firebase 기본 설정 ---
-        // [수정됨] storageBucket 주소 형식을 표준에 맞게 변경하고, 사용하지 않는 measurementId를 제거했습니다.
         const firebaseConfig = {
             apiKey: "AIzaSyAvLt0F8gSqe24Gf0xHHw25MfMirmV6er0",
             authDomain: "workbook-c77c1.firebaseapp.com",
             projectId: "workbook-c77c1",
-            storageBucket: "workbook-c77c1.firebasestorage.app",
+            storageBucket: "workbook-c77c1.appspot.com",
             messagingSenderId: "763395615278",
-            appId: "1:763395615278:web:8f245f9b328440f0a54dbf",
-            measurementId: "G-M1GP1JRRVV"
+            appId: "1:763395615278:web:8f245f9b328440f0a54dbf"
         };
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
@@ -107,7 +124,14 @@
         const detailsTitle = document.getElementById('details-title');
         const totalStudentsEl = document.getElementById('totalStudents');
         const averageProgressEl = document.getElementById('averageProgress');
+        const deleteModal = document.getElementById('delete-confirmation-modal');
+        const deleteConfirmationText = document.getElementById('delete-confirmation-text');
+        const cancelDeleteBtn = document.getElementById('cancel-delete-btn');
+        const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
+
         let currentSnapshotUnsubscribe = null; // 실시간 감시를 멈추기 위한 변수
+        let currentWorkbookId = null; // 현재 보고 있는 워크북 ID
+        let studentIdToDelete = null; // 삭제할 학생의 ID
 
         // --- 기능 함수 ---
         /**
@@ -116,18 +140,18 @@
         const showWorkbookSelection = () => {
             workbookSelectionView.style.display = 'block';
             studentDetailsView.style.display = 'none';
-            // 이전에 실행 중이던 실시간 감시가 있다면 중지
             if (currentSnapshotUnsubscribe) {
                 currentSnapshotUnsubscribe();
                 currentSnapshotUnsubscribe = null;
             }
+            currentWorkbookId = null;
         };
 
         /**
          * 특정 워크북의 학생 현황 화면을 표시하는 함수
-         * @param {object} workbook - {id, name} 워크북 정보 객체
          */
         const showStudentDetails = (workbook) => {
+            currentWorkbookId = workbook.id; // 현재 워크북 ID 저장
             workbookSelectionView.style.display = 'none';
             studentDetailsView.style.display = 'block';
             detailsTitle.textContent = workbook.name;
@@ -135,10 +159,8 @@
             totalStudentsEl.textContent = '0';
             averageProgressEl.textContent = '0%';
 
-            // 선택된 워크북의 학생 데이터 경로 설정
-            const studentsColRef = collection(db, `artifacts/${workbook.id}/public/data/students`);
+            const studentsColRef = collection(db, `artifacts/${currentWorkbookId}/public/data/students`);
             
-            // 실시간으로 학생 데이터 감시 시작
             currentSnapshotUnsubscribe = onSnapshot(studentsColRef, (snapshot) => {
                 const studentsData = [];
                 snapshot.forEach((doc) => {
@@ -146,7 +168,7 @@
                 });
                 updateDashboard(studentsData);
             }, (error) => {
-                console.error(`Error fetching data for ${workbook.id}:`, error);
+                console.error(`Error fetching data for ${currentWorkbookId}:`, error);
                 studentListContainer.innerHTML = `<p class="text-center md:col-span-2 lg:col-span-3 text-red-500">"${workbook.name}" 워크북 데이터를 불러오는 중 오류가 발생했습니다. 권한을 확인해주세요.</p>`;
             });
         };
@@ -157,35 +179,34 @@
         const createStudentCard = (studentId, studentData) => {
             const studentName = studentData.studentName || '이름 없음';
             const studentIdShort = studentId.substring(0, 8);
-            
             const completedTasks = studentData.completedTasks || [];
-            const totalTasks = 7; // 체크리스트 항목 개수를 고정값으로 설정
+            const totalTasks = 7; 
             const completedCount = completedTasks.filter(Boolean).length;
             const progress = totalTasks > 0 ? (completedCount / totalTasks) * 100 : 0;
-            
             const story = (studentData.savedStory || '아직 이야기가 없어요.').replace(/</g, "&lt;").replace(/>/g, "&gt;");
-            const thought1 = (studentData.savedThoughts?.[0] || '아직 생각이 없어요.').replace(/</g, "&lt;").replace(/>/g, "&gt;");
-            const thought2 = (studentData.savedThoughts?.[1] || '아직 생각이 없어요.').replace(/</g, "&lt;").replace(/>/g, "&gt;");
-
+            
             const card = document.createElement('div');
-            card.className = "bg-white rounded-2xl shadow-lg p-6 space-y-4";
+            card.className = "bg-white rounded-2xl shadow-lg p-6 flex flex-col justify-between";
             card.innerHTML = `
-                <div>
-                    <h3 class="font-bold text-xl text-[#2c3e50] truncate" title="${studentId}">${studentName}</h3>
-                    <p class="text-sm text-gray-400">ID: ${studentIdShort}...</p>
-                </div>
-                <div>
-                    <p class="font-semibold text-gray-600">진행률: ${Math.round(progress)}%</p>
-                    <div class="w-full bg-gray-200 rounded-full h-4 mt-1">
-                        <div class="bg-gradient-to-r from-[#3498db] to-[#4ECDC4] h-4 rounded-full" style="width: ${progress}%"></div>
-                    </div>
-                </div>
-                 <div class="space-y-2">
+                <div class="space-y-4">
                     <div>
-                        <h4 class="font-bold text-gray-700">🤖 AI 친구 이야기:</h4>
-                        <p class="text-sm bg-gray-100 p-2 rounded-md max-h-24 overflow-y-auto">${story}</p>
+                        <h3 class="font-bold text-xl text-[#2c3e50] truncate" title="${studentId}">${studentName}</h3>
+                        <p class="text-sm text-gray-400">ID: ${studentIdShort}...</p>
+                    </div>
+                    <div>
+                        <p class="font-semibold text-gray-600">진행률: ${Math.round(progress)}%</p>
+                        <div class="w-full bg-gray-200 rounded-full h-4 mt-1">
+                            <div class="bg-gradient-to-r from-[#3498db] to-[#4ECDC4] h-4 rounded-full" style="width: ${progress}%"></div>
+                        </div>
+                    </div>
+                    <div class="space-y-2">
+                        <div>
+                            <h4 class="font-bold text-gray-700">🤖 AI 친구 이야기:</h4>
+                            <p class="text-sm bg-gray-100 p-2 rounded-md max-h-24 overflow-y-auto">${story}</p>
+                        </div>
                     </div>
                 </div>
+                <button data-id="${studentId}" data-name="${studentName}" class="delete-btn mt-4 w-full bg-red-100 text-red-700 font-bold py-2 px-3 rounded-lg hover:bg-red-200 transition-colors">삭제</button>
             `;
             return card;
         };
@@ -201,7 +222,6 @@
                 studentListContainer.innerHTML = '<p class="text-center md:col-span-2 lg:col-span-3 text-gray-500">아직 참여한 학생이 없습니다.</p>';
             }
 
-            // 학생 이름순으로 정렬
             students.sort((a, b) => (a[1].studentName || '').localeCompare(b[1].studentName || '', 'ko'));
 
             students.forEach(([id, data]) => {
@@ -218,6 +238,20 @@
             const avgProgress = students.length > 0 ? totalProgress / students.length : 0;
             averageProgressEl.textContent = `${Math.round(avgProgress)}%`;
         };
+        
+        /**
+         * 삭제 확인 모달을 열고 닫는 함수
+         */
+        const openDeleteModal = (studentId, studentName) => {
+            studentIdToDelete = studentId;
+            deleteConfirmationText.textContent = `'${studentName}' 학생의 모든 데이터가 영구적으로 삭제됩니다. 이 작업은 되돌릴 수 없습니다.`;
+            deleteModal.classList.remove('hidden');
+        };
+
+        const closeDeleteModal = () => {
+            studentIdToDelete = null;
+            deleteModal.classList.add('hidden');
+        };
 
         // --- 초기화 및 이벤트 리스너 설정 ---
         
@@ -231,15 +265,39 @@
             workbookListContainer.appendChild(wbCard);
         });
         
-        // 뒤로 가기 버튼 이벤트
         backButton.addEventListener('click', showWorkbookSelection);
+
+        // 삭제 버튼 이벤트 리스너 (이벤트 위임)
+        studentListContainer.addEventListener('click', (e) => {
+            const deleteButton = e.target.closest('.delete-btn');
+            if (deleteButton) {
+                const studentId = deleteButton.dataset.id;
+                const studentName = deleteButton.dataset.name;
+                openDeleteModal(studentId, studentName);
+            }
+        });
+
+        // 모달 버튼 이벤트 리스너
+        cancelDeleteBtn.addEventListener('click', closeDeleteModal);
+        confirmDeleteBtn.addEventListener('click', async () => {
+            if (studentIdToDelete && currentWorkbookId) {
+                const docRef = doc(db, `artifacts/${currentWorkbookId}/public/data/students`, studentIdToDelete);
+                try {
+                    await deleteDoc(docRef);
+                    console.log("Document successfully deleted!");
+                } catch (error) {
+                    console.error("Error removing document: ", error);
+                    alert("데이터 삭제 중 오류가 발생했습니다.");
+                } finally {
+                    closeDeleteModal();
+                }
+            }
+        });
         
         // Firebase 인증
         onAuthStateChanged(auth, (user) => {
             if (!user) {
-                signInAnonymously(auth).catch((error) => {
-                    console.error("Anonymous sign-in failed:", error);
-                });
+                signInAnonymously(auth).catch((error) => console.error("Anonymous sign-in failed:", error));
             }
         });
 
