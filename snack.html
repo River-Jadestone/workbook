@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>알록달록 스낵 가게 만들기 (인터랙티브 워크북)</title>
+    <!-- Tailwind CSS(스타일링 도구)를 불러옵니다 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 웹 폰트를 불러옵니다 -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet">
+    <!-- 이 페이지에서만 사용할 추가 스타일을 정의합니다 -->
+    <style>
+        /* 기본 폰트를 설정합니다 */
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #fdfdff; 
+            transition: background-color 0.5s;
+        }
+        /* 테마별 스타일 정의 */
+        .theme-blue .theme-text { color: #3498db; }
+        .theme-blue .theme-bg { background-color: #3498db; }
+        .theme-blue .theme-bg-hover:hover { background-color: #2980b9; }
+        .theme-blue .theme-ring:focus { ring-color: #3498db; }
+        
+        .theme-pink .theme-text { color: #e91e63; }
+        .theme-pink .theme-bg { background-color: #e91e63; }
+        .theme-pink .theme-bg-hover:hover { background-color: #c2185b; }
+        .theme-pink .theme-ring:focus { ring-color: #e91e63; }
+
+        .theme-green .theme-text { color: #4CAF50; }
+        .theme-green .theme-bg { background-color: #4CAF50; }
+        .theme-green .theme-bg-hover:hover { background-color: #388E3C; }
+        .theme-green .theme-ring:focus { ring-color: #4CAF50; }
+
+        /* '오늘 할 일' 항목이 완료됐을 때의 스타일 */
+        .task-item.completed {
+            text-decoration: line-through; /* 취소선 */
+            color: #9ca3af; /* 회색 글씨 */
+        }
+        .task-item.completed .checkbox {
+            background-color: #4ECDC4; /* 배경색 변경 */
+            border-color: #4ECDC4; /* 테두리색 변경 */
+        }
+        /* 체크박스 안에 체크 표시(✔)를 만듭니다 */
+        .task-item .checkbox::after {
+            content: '✔';
+            color: white;
+            display: inline-block;
+            opacity: 0; /* 처음엔 안 보이게 */
+            transform: scale(0.5); /* 처음엔 작게 */
+            transition: all 0.2s ease-in-out; /* 부드러운 애니메이션 효과 */
+        }
+        /* 완료된 항목에만 체크 표시가 보이도록 합니다 */
+        .task-item.completed .checkbox::after {
+            opacity: 1; /* 보이게 */
+            transform: scale(1); /* 원래 크기로 */
+        }
+        /* 진행률 바(Progress Bar)가 채워질 때 부드럽게 움직이도록 합니다 */
+        .progress-bar-inner {
+            transition: width 0.5s ease-in-out;
+        }
+        /* 로딩 중 표시(스피너) 스타일 */
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: #4ECDC4;
+            animation: spin 1s ease infinite; /* 빙글빙글 도는 애니메이션 */
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-gray-800 theme-blue">
+
+    <!-- 전체 페이지를 감싸는 컨테이너 -->
+    <div class="container mx-auto p-4 md:p-8 max-w-4xl">
+
+        <!-- 페이지 최상단 제목 부분 -->
+        <header class="text-center mb-10">
+            <h1 class="text-4xl md:text-5xl font-black text-[#2c3e50]">🌈 알록달록 스낵 가게 만들기</h1>
+            <p class="text-lg theme-text mt-2 font-bold">나만의 규칙으로 움직이는 로봇 가게를 만들어요!</p>
+        </header>
+
+        <!-- 메인 콘텐츠 영역 -->
+        <main class="space-y-8">
+            
+            <div class="bg-white rounded-2xl shadow-lg p-6 grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                <div>
+                    <label for="studentName" class="block font-bold text-xl text-[#2c3e50] mb-2">👋 내 이름은?</label>
+                    <input type="text" id="studentName" placeholder="여기에 이름을 적어주세요..." class="w-full p-3 border-2 border-gray-200 rounded-lg focus:ring-2 theme-ring focus:border-transparent transition">
+                </div>
+                <!-- [신규 기능] 나만의 가게 디자인하기 -->
+                <div>
+                    <p class="block font-bold text-xl text-[#2c3e50] mb-2">🎨 가게 테마 색 고르기</p>
+                    <div id="theme-selector" class="flex space-x-3">
+                        <button data-theme="blue" class="w-10 h-10 rounded-full bg-[#3498db] ring-2 ring-offset-2 ring-transparent transition"></button>
+                        <button data-theme="pink" class="w-10 h-10 rounded-full bg-[#e91e63] ring-2 ring-offset-2 ring-transparent transition"></button>
+                        <button data-theme="green" class="w-10 h-10 rounded-full bg-[#4CAF50] ring-2 ring-offset-2 ring-transparent transition"></button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 오늘 내가 할 일 섹션 (체크리스트) -->
+            <div class="bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition-shadow duration-300">
+                <h2 class="text-2xl font-bold text-[#2c3e50] mb-4">✅ 오늘 내가 할 일!</h2>
+                <!-- 진행률 바 -->
+                <div class="mb-4">
+                    <div class="w-full bg-gray-200 rounded-full h-4">
+                        <div id="progressBar" class="bg-gradient-to-r from-[#3498db] to-[#4ECDC4] h-4 rounded-full progress-bar-inner" style="width: 0%"></div>
+                    </div>
+                    <p id="progressText" class="text-right text-sm font-semibold text-gray-600 mt-1">0% 완료</p>
+                </div>
+                <!-- 체크리스트 목록 -->
+                <ul id="taskList" class="space-y-3">
+                    <li class="task-item flex items-center p-3 bg-slate-100 rounded-lg cursor-pointer hover:bg-slate-200 transition-colors">
+                        <div class="checkbox w-6 h-6 border-2 border-gray-300 rounded-md mr-4 flex-shrink-0 flex items-center justify-center"></div>
+                        <span>스낵 가게 로봇을 뚝딱뚝딱 조립했어요.</span>
+                    </li>
+                    <li class="task-item flex items-center p-3 bg-slate-100 rounded-lg cursor-pointer hover:bg-slate-200 transition-colors">
+                        <div class="checkbox w-6 h-6 border-2 border-gray-300 rounded-md mr-4 flex-shrink-0 flex items-center justify-center"></div>
+                        <span>내 가게의 규칙을 정하고 코딩 약속을 했어요.</span>
+                    </li>
+                    <li class="task-item flex items-center p-3 bg-slate-100 rounded-lg cursor-pointer hover:bg-slate-200 transition-colors">
+                        <div class="checkbox w-6 h-6 border-2 border-gray-300 rounded-md mr-4 flex-shrink-0 flex items-center justify-center"></div>
+                        <span>색깔에 맞춰 과자를 주는 기본 코딩을 완성했어요.</span>
+                    </li>
+                    <li class="task-item flex items-center p-3 bg-slate-100 rounded-lg cursor-pointer hover:bg-slate-200 transition-colors">
+                        <div class="checkbox w-6 h-6 border-2 border-gray-300 rounded-md mr-4 flex-shrink-0 flex items-center justify-center"></div>
+                        <span>더 멋진 기능을 만드는 도전 미션에 성공했어요!</span>
+                    </li>
+                    <li class="task-item flex items-center p-3 bg-slate-100 rounded-lg cursor-pointer hover:bg-slate-200 transition-colors">
+                        <div class="checkbox w-6 h-6 border-2 border-gray-300 rounded-md mr-4 flex-shrink-0 flex items-center justify-center"></div>
+                        <span>AI 친구와 함께 재미있는 이야기를 만들었어요.</span>
+                    </li>
+                     <li class="task-item flex items-center p-3 bg-slate-100 rounded-lg cursor-pointer hover:bg-slate-200 transition-colors">
+                        <div class="checkbox w-6 h-6 border-2 border-gray-300 rounded-md mr-4 flex-shrink-0 flex items-center justify-center"></div>
+                        <span>친구들에게 내 스낵 가게를 멋지게 자랑했어요.</span>
+                    </li>
+                </ul>
+            </div>
+            
+            <!-- AI 이야기 만들기 섹션 -->
+            <div class="bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition-shadow duration-300">
+                <h2 class="text-2xl font-bold text-[#2c3e50] mb-4">🚀 AI 친구랑 이야기 만들기</h2>
+                <p class="text-gray-600 mb-4">스낵 가게에 대한 재미있는 이야기를 상상해봐요! 아래 칸에 단어 3개를 넣고 버튼을 눌러보세요.</p>
+                <!-- 키워드 입력 칸 -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <input id="keyword1" type="text" placeholder="단어 1 (예: 로봇)" class="p-2 border border-gray-300 rounded-md focus:ring-2 theme-ring focus:border-transparent">
+                    <input id="keyword2" type="text" placeholder="단어 2 (예: 색깔)" class="p-2 border border-gray-300 rounded-md focus:ring-2 theme-ring focus:border-transparent">
+                    <input id="keyword3" type="text" placeholder="단어 3 (예: 손님)" class="p-2 border border-gray-300 rounded-md focus:ring-2 theme-ring focus:border-transparent">
+                </div>
+                <!-- 이야기 생성 버튼 -->
+                <button id="generateStoryBtn" class="w-full theme-bg text-white font-bold py-2 px-4 rounded-lg theme-bg-hover transition-colors flex items-center justify-center">
+                    <span id="btnText">재미있는 이야기 만들기!</span>
+                    <div id="btnSpinner" class="spinner hidden ml-2"></div>
+                </button>
+                <!-- AI가 만든 이야기가 표시될 곳 -->
+                <div id="storyResult" class="mt-4 p-4 bg-gray-100 rounded-md min-h-[100px] whitespace-pre-wrap">AI 친구가 여기에 이야기를 만들어 줄 거예요!</div>
+            </div>
+
+            <!-- 코딩 약속(흐름도) 섹션 -->
+            <div class="lg:col-span-3 bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition-shadow duration-300">
+                <h2 class="text-2xl font-bold text-center text-[#2c3e50] mb-6">🛠️ 로봇과의 코딩 약속 (흐름도)</h2>
+                <div class="flex flex-col items-center space-y-4">
+                    <!-- "컬러센서로" 명시 -->
+                    <div class="text-center flow-item flex flex-col items-center">
+                        <div class="bg-[#f1c40f] text-white rounded-full w-28 h-28 flex items-center justify-center text-center font-bold text-lg p-2 shadow-md">컬러센서로<br>주문 받기</div>
+                        <div class="w-1 h-6 bg-gray-300"></div>
+                        <div class="bg-white border-2 border-gray-300 p-3 rounded-lg shadow-sm">
+                            <p class="font-bold">약속된 색깔인가요?</p>
+                        </div>
+                        <div class="w-1 h-6 bg-gray-300"></div>
+                    </div>
+                    
+                    <div class="w-full grid grid-cols-1 md:grid-cols-2 gap-6 text-center">
+                        <div>
+                            <p class="font-bold text-green-600 mb-2">✅ 네 (성공)</p>
+                            <!-- [수정됨] 디스플레이에 음식 이름 표시 -->
+                            <div class="bg-green-50 border-2 border-green-200 p-4 rounded-lg shadow-sm space-y-2">
+                                <p>1. 디스플레이에 '음식 이름'</p>
+                                <p>2. 모터가 앞으로!</p>
+                                <p>3. 모터가 뒤로!</p>
+                                <p>4. 초록 불빛 ON!</p>
+                            </div>
+                        </div>
+                         <div>
+                            <p class="font-bold text-red-600 mb-2">❌ 아니오 (실패)</p>
+                            <div class="bg-red-50 border-2 border-red-200 p-4 rounded-lg shadow-sm space-y-2">
+                                <p>1. 빨간 불빛 ON!</p>
+                                <p>2. 디스플레이에 '?' 글자</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 미션 섹션 -->
+            <div class="bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition-shadow duration-300">
+                <h2 class="text-2xl font-bold text-[#2c3e50] mb-4">🎯 미션 시작!</h2>
+                <!-- [수정됨] 디스플레이에 음식 이름 표시 -->
+                <div class="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-r-lg mb-6">
+                    <h3 class="font-bold text-lg text-blue-800">기본 미션</h3>
+                    <p class="text-blue-700 mt-1">1. 내가 정한 색깔에 맞춰 모터가 앞으로~ 뒤로~ 움직이게 해요.</p>
+                    <p class="text-blue-700 mt-1">2. 주문 성공은 **디스플레이에 주문한 음식 이름을 보여주고**, 초록 불빛으로 알려줘요!</p>
+                </div>
+                <div>
+                    <h3 class="font-bold text-lg text-[#2c3e50] mb-3">🚀 도전 미션 (하나만 골라도 멋져!)</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="bg-amber-50 p-4 rounded-xl text-center border-2 border-dashed border-amber-300">
+                            <div class="text-4xl mb-2">⚖️</div>
+                            <h4 class="font-bold text-amber-800">과자 양 조절하기</h4>
+                            <p class="text-amber-700 text-sm">색깔마다 모터가 다르게 움직여서 과자를 많이 주거나 조금 줘요.</p>
+                        </div>
+                        <div class="bg-purple-50 p-4 rounded-xl text-center border-2 border-dashed border-purple-300">
+                            <div class="text-4xl mb-2">💡</div>
+                            <h4 class="font-bold text-purple-800">"만드는 중" 표시</h4>
+                            <p class="text-purple-700 text-sm">모터가 움직이는 동안 노란 불빛을 깜빡여서 알려줘요.</p>
+                        </div>
+                        <div class="bg-teal-50 p-4 rounded-xl text-center border-2 border-dashed border-teal-300">
+                            <div class="text-4xl mb-2">🏃💨</div>
+                            <h4 class="font-bold text-teal-800">음식마다 다른 속도</h4>
+                            <p class="text-teal-700 text-sm">음식(색깔)에 따라 모터가 움직이는 빠르기를 다르게 해봐요.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 생각 나누기 섹션 -->
+            <div class="bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition-shadow duration-300">
+                <h2 class="text-2xl font-bold text-[#2c3e50] mb-4">🤔 생각 나누기</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label for="thought1" class="block font-semibold text-gray-700 mb-1">오늘 내가 만든 스낵 가게 로봇의 최고로 멋진 점은 무엇인가요?</label>
+                        <textarea id="thought1" rows="3" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 theme-ring focus:border-transparent" placeholder="여기에 자유롭게 생각을 적어보세요..."></textarea>
+                    </div>
+                    <div>
+                        <label for="thought2" class="block font-semibold text-gray-700 mb-1">이 멋진 로봇이 우리 집이나 학교에 있다면, 무엇을 도와줄 수 있을까요?</label>
+                        <textarea id="thought2" rows="3" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 theme-ring focus:border-transparent" placeholder="상상력을 발휘해 멋진 아이디어를 내보세요!"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lg:col-span-3 text-center text-sm text-gray-500 mt-4">
+                <p>Firebase와 연동하여 학습 진행 상황이 자동으로 저장됩니다.</p>
+            </div>
+        </main>
+    </div>
+
+    <!-- 자바스크립트 코드 시작 -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'snack-shop-workbook';
+        let firebaseConfig;
+        try {
+            firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : { apiKey: "DEMO", authDomain: "DEMO", projectId: "DEMO" };
+        } catch (e) {
+            console.error("Firebase config is not valid JSON:", __firebase_config);
+            firebaseConfig = { apiKey: "DEMO", authDomain: "DEMO", projectId: "DEMO" };
+        }
+        
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        
+        let userId = null;
+        let userDocRef = null;
+        
+        const studentNameEl = document.getElementById('studentName');
+        const taskList = document.getElementById('taskList');
+        const taskItems = Array.from(taskList.getElementsByClassName('task-item'));
+        const progressBar = document.getElementById('progressBar');
+        const progressText = document.getElementById('progressText');
+        const generateStoryBtn = document.getElementById('generateStoryBtn');
+        const storyResult = document.getElementById('storyResult');
+        const keyword1 = document.getElementById('keyword1');
+        const keyword2 = document.getElementById('keyword2');
+        const keyword3 = document.getElementById('keyword3');
+        const btnText = document.getElementById('btnText');
+        const btnSpinner = document.getElementById('btnSpinner');
+        const thought1 = document.getElementById('thought1');
+        const thought2 = document.getElementById('thought2');
+        const themeSelector = document.getElementById('theme-selector');
+        const bodyEl = document.body;
+
+        const updateProgress = () => {
+            const completedTasks = taskItems.filter(item => item.classList.contains('completed')).length;
+            const totalTasks = taskItems.length;
+            const percentage = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
+            progressBar.style.width = `${percentage}%`;
+            progressText.textContent = `${Math.round(percentage)}% 완료`;
+        };
+        
+        const saveState = async () => {
+            if (!userDocRef) return;
+            const completedState = taskItems.map(item => item.classList.contains('completed'));
+            const storyText = storyResult.innerHTML;
+            const keywords = [keyword1.value, keyword2.value, keyword3.value];
+            const thoughts = [thought1.value, thought2.value];
+            const name = studentNameEl.value;
+            const theme = bodyEl.dataset.theme || 'blue';
+
+            try {
+                await setDoc(userDocRef, { 
+                    studentName: name,
+                    theme: theme,
+                    completedTasks: completedState, 
+                    savedStory: storyText, 
+                    savedKeywords: keywords,
+                    savedThoughts: thoughts 
+                }, { merge: true });
+            } catch (error) {
+                console.error("Error saving state:", error);
+            }
+        };
+        
+        const applyTheme = (themeName) => {
+            bodyEl.classList.remove('theme-blue', 'theme-pink', 'theme-green');
+            bodyEl.classList.add(`theme-${themeName}`);
+            bodyEl.dataset.theme = themeName;
+            
+            // 활성화된 테마 버튼에 시각적 효과 추가
+            document.querySelectorAll('#theme-selector button').forEach(btn => {
+                btn.classList.remove('ring-blue-500');
+            });
+            document.querySelector(`#theme-selector button[data-theme="${themeName}"]`).classList.add('ring-blue-500');
+        };
+
+        const loadState = (data) => {
+            applyTheme(data.theme || 'blue');
+            if (data.studentName) {
+                studentNameEl.value = data.studentName;
+            }
+            if (data.completedTasks && data.completedTasks.length === taskItems.length) {
+                taskItems.forEach((item, index) => {
+                    if (data.completedTasks[index]) {
+                        item.classList.add('completed');
+                    } else {
+                        item.classList.remove('completed');
+                    }
+                });
+            }
+            if (data.savedStory) {
+                storyResult.innerHTML = data.savedStory;
+            }
+            if(data.savedKeywords && data.savedKeywords.length === 3) {
+                keyword1.value = data.savedKeywords[0] || '';
+                keyword2.value = data.savedKeywords[1] || '';
+                keyword3.value = data.savedKeywords[2] || '';
+            }
+            if(data.savedThoughts && data.savedThoughts.length === 2) {
+                thought1.value = data.savedThoughts[0] || '';
+                thought2.value = data.savedThoughts[1] || '';
+            }
+            updateProgress();
+        };
+        
+        const handleGenerateStory = async () => {
+            const k1 = keyword1.value.trim();
+            const k2 = keyword2.value.trim();
+            const k3 = keyword3.value.trim();
+
+            if (!k1 || !k2 || !k3) {
+                storyResult.textContent = '세 가지 단어를 모두 입력해주세요!';
+                return;
+            }
+            
+            btnText.textContent = '이야기 만드는 중...';
+            btnSpinner.classList.remove('hidden');
+            generateStoryBtn.disabled = true;
+
+            const prompt = `알록달록 스낵 가게에서 일하는 로봇에 대한 이야기야. '${k1}', '${k2}', '${k3}' 단어를 꼭 넣어서, 초등학생이 좋아할 만한 짧고 재미있는 이야기를 만들어 줘.`;
+            
+            try {
+                const apiKey = "";
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+                
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API call failed with status: ${response.status}`);
+                }
+
+                const result = await response.json();
+                
+                if (result.candidates && result.candidates.length > 0) {
+                    const text = result.candidates[0].content.parts[0].text;
+                    storyResult.textContent = text;
+                } else {
+                    storyResult.textContent = '이야기를 만들지 못했어요. 다시 시도해 보세요.';
+                }
+            } catch (error) {
+                console.error("Error generating story:", error);
+                storyResult.textContent = '오류가 발생했어요. 인터넷 연결을 확인하고 다시 시도해 보세요.';
+            } finally {
+                btnText.textContent = '재미있는 이야기 만들기!';
+                btnSpinner.classList.add('hidden');
+                generateStoryBtn.disabled = false;
+                await saveState(); 
+            }
+        };
+
+        taskItems.forEach(item => {
+            item.addEventListener('click', () => {
+                item.classList.toggle('completed');
+                updateProgress();
+                saveState();
+            });
+        });
+
+        generateStoryBtn.addEventListener('click', handleGenerateStory);
+        
+        studentNameEl.addEventListener('blur', saveState);
+        thought1.addEventListener('input', saveState);
+        thought2.addEventListener('input', saveState);
+
+        themeSelector.addEventListener('click', (e) => {
+            if (e.target.tagName === 'BUTTON') {
+                const theme = e.target.dataset.theme;
+                applyTheme(theme);
+                saveState();
+            }
+        });
+
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                userId = user.uid;
+                userDocRef = doc(db, `artifacts/${appId}/public/data/students`, userId);
+                onSnapshot(userDocRef, (docSnap) => {
+                    if (docSnap.exists()) {
+                        loadState(docSnap.data());
+                    } else {
+                        console.log("No previous data found. Creating new document.");
+                        saveState(); 
+                    }
+                }, (error) => {
+                    console.error("Error with onSnapshot:", error);
+                });
+            } else {
+                console.log("No user signed in.");
+            }
+        });
+        
+        try {
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                 await signInWithCustomToken(auth, __initial_auth_token);
+            } else {
+                 await signInAnonymously(auth);
+            }
+        } catch(error) {
+            console.error("Authentication failed:", error);
+        }
+    </script>
+</body>
+</html>
