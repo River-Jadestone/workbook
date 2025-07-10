@@ -3,348 +3,326 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>통합 관리자 대시보드</title>
+    <title>스마트 워크북</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
-        body {
-            font-family: 'Noto Sans KR', sans-serif;
-            background-color: #f4f7f6;
-        }
-        .progress-bar-inner {
-            transition: width 0.5s ease-in-out;
-        }
-        /* 부드러운 화면 전환 효과 */
-        .view {
-            display: none;
-            animation: fadeIn 0.5s;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-        /* 삭제 확인 모달 창 스타일 */
-        .modal-overlay {
-            transition: opacity 0.3s ease;
-        }
-        .modal-content {
-            transition: transform 0.3s ease;
-        }
+        body { font-family: 'Noto Sans KR', sans-serif; background-color: #f0f4f8; }
+        .spinner { border: 4px solid rgba(0,0,0,0.1); width: 24px; height: 24px; border-radius: 50%; border-left-color: #3498db; animation: spin 1s ease infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .view { display: none; }
+        .view.active { display: block; }
+        .workbook-section { background-color: white; border-radius: 1rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); padding: 1.5rem; }
+        
+        /* 슬라이드쇼 스타일 */
+        .slider-container { position: relative; max-width: 100%; margin: auto; }
+        .slide { display: none; animation: fadeIn 0.5s; }
+        @keyframes fadeIn { from { opacity: 0.4 } to { opacity: 1 } }
+        .slide img, .slide iframe { width: 100%; aspect-ratio: 16 / 9; object-fit: contain; border-radius: 0.75rem; background-color: #e5e7eb; }
+        .slider-nav { cursor: pointer; position: absolute; top: 50%; width: auto; padding: 16px; margin-top: -22px; color: white; font-weight: bold; font-size: 24px; transition: 0.6s ease; border-radius: 0 3px 3px 0; user-select: none; background-color: rgba(0,0,0,0.3); }
+        .prev { left: 0; border-radius: 3px 0 0 3px; }
+        .next { right: 0; border-radius: 0 3px 3px 0; }
+        .slider-nav:hover { background-color: rgba(0,0,0,0.8); }
+        .caption-text { color: #4b5563; font-size: 1rem; padding: 8px 12px; text-align: center; }
+        .dots-container { text-align: center; padding: 10px 0; }
+        .dot { cursor: pointer; height: 15px; width: 15px; margin: 0 2px; background-color: #bbb; border-radius: 50%; display: inline-block; transition: background-color 0.6s ease; }
+        .dot.active { background-color: #717171; }
+
+        /* 커스텀 확인 창 스타일 */
+        .custom-confirm-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 100; }
+        .custom-confirm-box { background: white; padding: 2rem; border-radius: 1rem; text-align: center; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04); max-width: 90%; width: 400px; }
     </style>
 </head>
 <body class="text-gray-800">
 
-    <!-- 비밀번호 입력 화면 -->
-    <div id="password-view" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center p-4 z-50">
-        <div class="bg-white p-8 rounded-2xl shadow-2xl text-center w-full max-w-sm">
-            <h2 class="text-2xl font-bold mb-4">🔒 관리자 인증</h2>
-            <p class="text-gray-600 mb-6">대시보드에 접속하려면 비밀번호를 입력하세요.</p>
-            <input type="password" id="password-input" class="w-full p-3 border-2 border-gray-300 rounded-lg text-center mb-4 focus:ring-2 focus:ring-blue-500" placeholder="비밀번호">
-            <button id="password-submit-btn" class="w-full bg-blue-500 text-white font-bold py-3 rounded-lg hover:bg-blue-600 transition-colors">접속하기</button>
-            <p id="password-error" class="text-red-500 mt-4 h-5"></p>
-        </div>
+    <div id="loading-overlay" class="fixed inset-0 bg-white bg-opacity-75 z-50 flex-col items-center justify-center">
+        <div class="spinner"></div>
+        <p id="loading-text" class="mt-2 font-bold text-lg">워크북을 불러오는 중...</p>
     </div>
-    
-    <!-- 메인 대시보드 콘텐츠 (처음에는 숨겨져 있음) -->
-    <div id="main-dashboard" class="hidden">
-        <div class="container mx-auto p-4 md:p-8">
-            <!-- 워크북 선택 화면 -->
-            <div id="workbook-selection-view" class="view" style="display: block;">
-                <header class="text-center mb-10">
-                    <h1 class="text-4xl md:text-5xl font-black text-[#2c3e50]">🚀 전체 워크북 목록</h1>
-                    <p class="text-lg text-[#34495e] mt-2 font-bold">확인하고 싶은 워크북을 선택하세요.</p>
-                </header>
-                <main id="workbook-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <!-- 자바스크립트로 워크북 목록이 여기에 채워집니다. -->
-                </main>
-            </div>
 
-            <!-- 학생 현황 상세 화면 -->
-            <div id="student-details-view" class="view">
-                <header class="relative flex items-center justify-center mb-10 py-4">
-                    <button id="backButton" class="absolute left-0 bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors">
-                        &larr; 뒤로 가기
-                    </button>
-                    <h1 id="details-title" class="text-2xl md:text-4xl font-black text-[#2c3e50] text-center"></h1>
-                </header>
-                <main class="space-y-8">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                        <div class="bg-white p-6 rounded-2xl shadow-lg text-center">
-                            <h2 class="text-xl font-bold text-gray-500">총 참여 학생 수</h2>
-                            <p id="totalStudents" class="text-5xl font-extrabold text-[#3498db]">0</p>
-                        </div>
-                        <div class="bg-white p-6 rounded-2xl shadow-lg text-center">
-                            <h2 class="text-xl font-bold text-gray-500">전체 평균 진행률</h2>
-                            <p id="averageProgress" class="text-5xl font-extrabold text-[#4ECDC4]">0%</p>
-                        </div>
-                    </div>
-                    <div id="studentList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        <!-- 자바스크립트로 학생 카드 목록이 여기에 채워집니다. -->
-                    </div>
-                </main>
+    <!-- [신규] 커스텀 확인 창 -->
+    <div id="custom-confirm" class="custom-confirm-overlay hidden">
+        <div class="custom-confirm-box">
+            <h3 class="text-xl font-bold mb-4">이미 제출한 워크북입니다.</h3>
+            <p class="mb-6">어떻게 할까요?</p>
+            <div class="flex justify-around">
+                <button id="confirm-review-btn" class="bg-blue-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-blue-600 transition-colors">📖 복습하기</button>
+                <button id="confirm-restart-btn" class="bg-gray-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-gray-600 transition-colors">✨ 새로 시작</button>
             </div>
         </div>
     </div>
 
-    <!-- 삭제 확인 모달 창 -->
-    <div id="delete-confirmation-modal" class="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
-        <div class="modal-content bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full transform scale-95">
-            <h2 class="text-2xl font-bold text-gray-800 mb-4">정말 삭제하시겠습니까?</h2>
-            <p id="delete-confirmation-text" class="text-gray-600 mb-6"></p>
-            <div class="flex justify-end space-x-4">
-                <button id="cancel-delete-btn" class="px-6 py-2 rounded-lg bg-gray-200 text-gray-800 font-semibold hover:bg-gray-300 transition-colors">취소</button>
-                <button id="confirm-delete-btn" class="px-6 py-2 rounded-lg bg-red-500 text-white font-semibold hover:bg-red-600 transition-colors">삭제</button>
+    <div class="container mx-auto p-4 md:p-8 max-w-4xl">
+        <div id="start-view" class="view active">
+            <header class="text-center mb-10"><h1 class="text-4xl md:text-5xl font-black text-gray-800">🚀 스마트 워크북</h1><p class="text-lg text-gray-600 mt-2">1. 이름을 입력하고, 2. 활동할 교구를 선택하세요.</p></header>
+            <div class="bg-white rounded-2xl shadow-lg p-6 mb-8">
+                <label for="studentName" class="block font-bold text-xl text-gray-700 mb-2">👋 내 이름은?</label>
+                <input type="text" id="studentName" placeholder="여기에 이름을 꼭 적어주세요..." class="w-full p-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
+                <p id="name-error" class="text-red-500 text-sm mt-1 hidden">이름을 입력해야 교구를 선택할 수 있어요!</p>
             </div>
+            <div id="tool-list" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
         </div>
+        <div id="workbook-list-view" class="view">
+            <header class="text-center mb-10"><button id="back-to-start-btn" class="float-left bg-gray-200 text-gray-700 font-bold py-2 px-4 rounded-lg hover:bg-gray-300">← 교구 다시 선택</button><h1 id="workbook-list-title" class="text-3xl md:text-4xl font-black text-gray-800">워크북을 선택하세요</h1></header>
+            <div id="workbook-list" class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8"></div>
+        </div>
+        <div id="workbook-view" class="view"></div>
     </div>
 
+    <script>
+        // 전역 변수 선언
+        const loadingOverlay = document.getElementById('loading-overlay'), loadingText = document.getElementById('loading-text');
+        const startView = document.getElementById('start-view'), workbookListView = document.getElementById('workbook-list-view'), workbookView = document.getElementById('workbook-view');
+        const studentNameInput = document.getElementById('studentName'), nameError = document.getElementById('name-error');
+        const backToStartBtn = document.getElementById('back-to-start-btn');
+        const toolListContainer = document.getElementById('tool-list'), workbookListContainer = document.getElementById('workbook-list'), workbookListTitle = document.getElementById('workbook-list-title');
+        const customConfirm = document.getElementById('custom-confirm');
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, onSnapshot, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        let allWorkbooks = [], geminiApiKey = null, currentTool = '', currentWorkbook = null, slideIndex = 1;
 
-        // --- Firebase 기본 설정 ---
-        const firebaseConfig = {
-            apiKey: "AIzaSyAvLt0F8gSqe24Gf0xHHw25MfMirmV6er0",
-            authDomain: "workbook-c77c1.firebaseapp.com",
-            projectId: "workbook-c77c1",
-            storageBucket: "workbook-c77c1.appspot.com",
-            messagingSenderId: "763395615278",
-            appId: "1:763395615278:web:8f245f9b328440f0a54dbf"
-        };
-        let app, db, auth;
+        // --- 핵심 기능 함수들 ---
+        function showLoading(show, message = '처리 중...') { loadingText.textContent = message; loadingOverlay.style.display = show ? 'flex' : 'none'; }
+        function switchView(viewId) { document.querySelectorAll('.view').forEach(v => v.classList.remove('active')); document.getElementById(viewId).classList.add('active'); window.scrollTo(0, 0); }
+        function getStorageKey() { if (!studentNameInput.value.trim() || !currentWorkbook) return null; return `smart-workbook-${studentNameInput.value.trim()}-${currentWorkbook.id}`; }
         
-        // --- UI 요소 변수 ---
-        const passwordView = document.getElementById('password-view');
-        const mainDashboard = document.getElementById('main-dashboard');
-        const passwordInput = document.getElementById('password-input');
-        const passwordSubmitBtn = document.getElementById('password-submit-btn');
-        const passwordError = document.getElementById('password-error');
-
-        const workbookSelectionView = document.getElementById('workbook-selection-view');
-        const studentDetailsView = document.getElementById('student-details-view');
-        const workbookListContainer = document.getElementById('workbook-list');
-        const studentListContainer = document.getElementById('studentList');
-        const backButton = document.getElementById('backButton');
-        const detailsTitle = document.getElementById('details-title');
-        const totalStudentsEl = document.getElementById('totalStudents');
-        const averageProgressEl = document.getElementById('averageProgress');
-        const deleteModal = document.getElementById('delete-confirmation-modal');
-        const deleteConfirmationText = document.getElementById('delete-confirmation-text');
-        const cancelDeleteBtn = document.getElementById('cancel-delete-btn');
-        const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
-
-        let currentSnapshotUnsubscribe = null;
-        let currentWorkbook = null; 
-        let studentIdToDelete = null; 
-
-        // ===================================================================================
-        // ** 중요! **
-        // 새로운 워크북을 만들 때마다 아래 workbooks 배열에 정보를 추가해주세요.
-        // id: 각 워크북의 appId 값과 동일해야 합니다.
-        // name: 대시보드에 표시될 이름입니다.
-        // totalTasks: 해당 워크북의 체크리스트 항목 총 개수입니다.
-        // ===================================================================================
-        const workbooks = [
-            { id: 'snack-shop-workbook', name: '🌈 알록달록 스낵 가게 만들기', totalTasks: 6 },
-            { id: 'cave-car-workbook', name: '🔦 동굴 탐험 자동차 만들기', totalTasks: 5 }
-        ];
-        
-        /**
-         * 비밀번호를 확인하고 대시보드를 보여주는 함수
-         */
-        function checkPassword() {
-            const enteredPassword = passwordInput.value;
-            if (enteredPassword === 'lego') {
-                passwordView.style.display = 'none';
-                mainDashboard.style.display = 'block';
-                initializeDashboard();
-            } else {
-                passwordError.textContent = '비밀번호가 올바르지 않습니다.';
-                passwordInput.value = '';
-            }
+        function saveStateToLocalStorage(isSubmitted = false) {
+            const key = getStorageKey(); if (!key) return;
+            const state = {};
+            document.querySelectorAll('#workbook-view [data-save]').forEach(el => { state[el.id] = el.type === 'checkbox' ? el.checked : (el.value !== undefined ? el.value : el.innerHTML); });
+            const tasks = document.querySelectorAll('.task-item');
+            if (tasks.length > 0) { state.tasks = Array.from(tasks).map(item => item.classList.contains('completed')); }
+            state.submitted = isSubmitted; // [수정됨] 제출 상태 플래그 추가
+            localStorage.setItem(key, JSON.stringify(state));
         }
 
-        /**
-         * 비밀번호 인증 성공 후 대시보드를 초기화하는 함수
-         */
-        function initializeDashboard() {
-            try {
-                app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
-            } catch (e) {
-                console.error("Firebase 초기화에 실패했습니다.", e);
-                alert("Firebase 초기화에 실패했습니다. 설정을 확인해주세요.");
-                return;
-            }
-
-            // [수정됨] Firebase에서 목록을 불러오는 대신, 코드에 직접 작성된 목록을 사용합니다.
-            renderWorkbookList(workbooks);
-        
-            // Firebase 인증
-            onAuthStateChanged(auth, (user) => {
-                if (!user) {
-                    signInAnonymously(auth).catch((error) => console.error("Anonymous sign-in failed:", error));
-                }
-            });
-        }
-        
-        /**
-         * 워크북 목록 카드를 화면에 그리는 함수
-         */
-        function renderWorkbookList(workbooks) {
-            workbookListContainer.innerHTML = '';
-            if (workbooks.length === 0) {
-                 workbookListContainer.innerHTML = `<p class="text-gray-500 md:col-span-3 text-center">등록된 워크북이 없습니다. 코드의 workbooks 배열을 확인해주세요.</p>`;
-            }
-            workbooks.forEach(wb => {
-                const wbCard = document.createElement('div');
-                wbCard.className = "bg-white p-8 rounded-2xl shadow-lg text-center cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300";
-                wbCard.innerHTML = `<h2 class="text-2xl font-bold text-[#2c3e50]">${wb.name}</h2>`;
-                wbCard.addEventListener('click', () => showStudentDetails(wb));
-                workbookListContainer.appendChild(wbCard);
-            });
-        }
-
-        const showWorkbookSelection = () => {
-            workbookSelectionView.style.display = 'block';
-            studentDetailsView.style.display = 'none';
-            if (currentSnapshotUnsubscribe) {
-                currentSnapshotUnsubscribe();
-                currentSnapshotUnsubscribe = null;
-            }
-            currentWorkbook = null;
-        };
-
-        const showStudentDetails = (workbook) => {
-            currentWorkbook = workbook;
-            workbookSelectionView.style.display = 'none';
-            studentDetailsView.style.display = 'block';
-            detailsTitle.textContent = workbook.name;
-            studentListContainer.innerHTML = '<p class="text-center md:col-span-2 lg:col-span-3 text-gray-500">학생 데이터를 불러오는 중입니다...</p>';
-            totalStudentsEl.textContent = '0';
-            averageProgressEl.textContent = '0%';
-
-            // [수정됨] 학생 데이터 경로를 워크북 코드와 일치시켰습니다.
-            const studentsColRef = collection(db, `artifacts/${workbook.id}/public/data/students`);
-            
-            currentSnapshotUnsubscribe = onSnapshot(studentsColRef, (snapshot) => {
-                const studentsData = [];
-                snapshot.forEach((doc) => {
-                    studentsData.push([doc.id, doc.data()]);
+        function loadStateFromLocalStorage(isReviewMode = false) {
+            const key = getStorageKey(); if (!key) return;
+            const savedState = localStorage.getItem(key);
+            if (savedState) {
+                const state = JSON.parse(savedState);
+                Object.keys(state).forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) {
+                        if (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT') { el.value = state[id]; } 
+                        else { el.innerHTML = state[id]; }
+                    }
                 });
-                updateDashboard(studentsData, workbook.totalTasks);
-            }, (error) => {
-                console.error(`Error fetching data for ${workbook.id}:`, error);
-                studentListContainer.innerHTML = `<p class="text-center md:col-span-2 lg:col-span-3 text-red-500">"${workbook.name}" 워크북 데이터를 불러오는 중 오류가 발생했습니다. Firestore 보안 규칙을 확인해주세요.</p>`;
-            });
-        };
-
-        const createStudentCard = (studentId, studentData, totalTasks) => {
-            const studentName = studentData.studentName || '이름 없음';
-            const studentIdShort = studentId.substring(0, 8);
-            const completedTasks = studentData.completedTasks || [];
-            const completedCount = completedTasks.filter(Boolean).length;
-            const progress = totalTasks > 0 ? (completedCount / totalTasks) * 100 : 0;
-            const story = (studentData.savedStory || '아직 이야기가 없어요.').replace(/</g, "&lt;").replace(/>/g, "&gt;");
-            
-            const card = document.createElement('div');
-            card.className = "bg-white rounded-2xl shadow-lg p-6 flex flex-col justify-between";
-            card.innerHTML = `
-                <div class="space-y-4">
-                    <div>
-                        <h3 class="font-bold text-xl text-[#2c3e50] truncate" title="${studentId}">${studentName}</h3>
-                        <p class="text-sm text-gray-400">ID: ${studentIdShort}...</p>
-                    </div>
-                    <div>
-                        <p class="font-semibold text-gray-600">진행률: ${Math.round(progress)}%</p>
-                        <div class="w-full bg-gray-200 rounded-full h-4 mt-1">
-                            <div class="bg-gradient-to-r from-[#3498db] to-[#4ECDC4] h-4 rounded-full" style="width: ${progress}%"></div>
-                        </div>
-                    </div>
-                    <div class="space-y-2">
-                        <div>
-                            <h4 class="font-bold text-gray-700">🤖 AI 친구 이야기:</h4>
-                            <p class="text-sm bg-gray-100 p-2 rounded-md max-h-24 overflow-y-auto">${story}</p>
-                        </div>
-                    </div>
-                </div>
-                <button data-id="${studentId}" data-name="${studentName}" class="delete-btn mt-4 w-full bg-red-100 text-red-700 font-bold py-2 px-3 rounded-lg hover:bg-red-200 transition-colors">삭제</button>
-            `;
-            return card;
-        };
-        
-        const updateDashboard = (students, totalTasks) => {
-            studentListContainer.innerHTML = '';
-            let totalProgress = 0;
-            
-            if (students.length === 0) {
-                studentListContainer.innerHTML = '<p class="text-center md:col-span-2 lg:col-span-3 text-gray-500">아직 참여한 학생이 없습니다.</p>';
-            }
-
-            students.sort((a, b) => (a[1].studentName || '').localeCompare(b[1].studentName || '', 'ko'));
-
-            students.forEach(([id, data]) => {
-                const card = createStudentCard(id, data, totalTasks);
-                studentListContainer.appendChild(card);
-                
-                const completedTasks = data.completedTasks || [];
-                const completedCount = completedTasks.filter(Boolean).length;
-                totalProgress += totalTasks > 0 ? (completedCount / totalTasks) * 100 : 0;
-            });
-            
-            totalStudentsEl.textContent = students.length;
-            const avgProgress = students.length > 0 ? totalProgress / students.length : 0;
-            averageProgressEl.textContent = `${Math.round(avgProgress)}%`;
-        };
-        
-        const openDeleteModal = (studentId, studentName) => {
-            studentIdToDelete = studentId;
-            deleteConfirmationText.textContent = `'${studentName}' 학생의 모든 데이터가 영구적으로 삭제됩니다. 이 작업은 되돌릴 수 없습니다.`;
-            deleteModal.classList.remove('hidden');
-        };
-
-        const closeDeleteModal = () => {
-            studentIdToDelete = null;
-            deleteModal.classList.add('hidden');
-        };
-
-        // --- 이벤트 리스너 설정 ---
-        passwordSubmitBtn.addEventListener('click', checkPassword);
-        passwordInput.addEventListener('keyup', (event) => {
-            if (event.key === 'Enter') {
-                checkPassword();
-            }
-        });
-
-        backButton.addEventListener('click', showWorkbookSelection);
-
-        studentListContainer.addEventListener('click', (e) => {
-            const deleteButton = e.target.closest('.delete-btn');
-            if (deleteButton) {
-                const studentId = deleteButton.dataset.id;
-                const studentName = deleteButton.dataset.name;
-                openDeleteModal(studentId, studentName);
-            }
-        });
-
-        cancelDeleteBtn.addEventListener('click', closeDeleteModal);
-        confirmDeleteBtn.addEventListener('click', async () => {
-            if (studentIdToDelete && currentWorkbook.id) {
-                const docRef = doc(db, `artifacts/${currentWorkbook.id}/public/data/students`, studentIdToDelete);
-                try {
-                    await deleteDoc(docRef);
-                } catch (error) {
-                    console.error("Error removing document: ", error);
-                    alert("데이터 삭제 중 오류가 발생했습니다.");
-                } finally {
-                    closeDeleteModal();
+                if (state.tasks) {
+                    document.querySelectorAll('.task-item').forEach((item, index) => {
+                        if (state.tasks[index]) {
+                            item.classList.add('completed');
+                            const checkbox = item.querySelector('.checkbox');
+                            checkbox.style.backgroundColor = '#34d399'; checkbox.style.borderColor = '#34d399';
+                        }
+                    });
+                }
+                // [신규] 복습 모드일 경우 모든 입력 비활성화
+                if (isReviewMode) {
+                    document.querySelectorAll('#workbook-view textarea, #workbook-view input, #workbook-view button, .task-item').forEach(el => {
+                        el.disabled = true;
+                        if(el.classList.contains('task-item')) el.style.cursor = 'default';
+                    });
+                    document.getElementById('back-to-list-btn').disabled = false; // 뒤로가기 버튼은 활성화
                 }
             }
-        });
+        }
 
+        function handleFinalSubmit() {
+            showLoading(true, '최종 결과를 선생님께 보내는 중...');
+            const recordData = {
+                studentName: studentNameInput.value.trim(), tool: currentTool, workbookId: currentWorkbook.id, workbookName: currentWorkbook.name,
+                activityContent: getActivityContent(), aiStory: document.getElementById('storyResult')?.textContent || ''
+            };
+            google.script.run.withSuccessHandler(response => {
+                showLoading(false); alert('워크북 활동이 성공적으로 제출되었어요!');
+                saveStateToLocalStorage(true); // [수정됨] 삭제 대신 '제출 완료' 상태로 저장
+                switchView('start-view');
+            }).withFailureHandler(err => { showLoading(false); alert('제출 실패: ' + err.message); }).saveRecord(recordData);
+        }
+
+        function getActivityContent() {
+            const content = JSON.parse(currentWorkbook.content);
+            const activityContent = {};
+            const tasks = document.querySelectorAll('.task-item');
+            if (tasks.length > 0) { activityContent.tasks = Array.from(tasks).map(item => item.classList.contains('completed')); }
+            if (content.type === 'bricq-hybrid') {
+                activityContent.quizzes = Array.from(document.querySelectorAll('textarea[id^="quiz"]')).map(area => area.value);
+                const spikeIdeaEl = document.getElementById('spike-idea');
+                activityContent.spikeIdea = spikeIdeaEl ? spikeIdeaEl.value : '';
+            } else {
+                activityContent.thoughts = Array.from(document.querySelectorAll('textarea[id^="thought"]')).map(area => area.value);
+            }
+            return activityContent;
+        }
+        function plusSlides(n) { showSlide(slideIndex += n); }
+        function currentSlide(n) { showSlide(slideIndex = n); }
+        function showSlide(n) {
+            let i; let slides = document.getElementsByClassName("slide"); let dots = document.getElementsByClassName("dot");
+            if (n > slides.length) {slideIndex = 1}
+            if (n < 1) {slideIndex = slides.length}
+            for (i = 0; i < slides.length; i++) { slides[i].style.display = "none"; }
+            for (i = 0; i < dots.length; i++) { dots[i].className = dots[i].className.replace(" active", ""); }
+            if (slides.length > 0) { slides[slideIndex-1].style.display = "block"; dots[slideIndex-1].className += " active"; }
+        }
+        function displayStartScreen() {
+            const tools = [...new Set(allWorkbooks.map(wb => wb.tool))];
+            toolListContainer.innerHTML = '';
+            tools.forEach(tool => {
+                const card = document.createElement('div');
+                card.className = "bg-white rounded-2xl shadow-lg p-8 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer text-center";
+                card.innerHTML = `<h3 class="text-2xl font-bold text-blue-600">${tool}</h3>`;
+                card.onclick = () => selectTool(tool);
+                toolListContainer.appendChild(card);
+            });
+            switchView('start-view');
+        }
+        function selectTool(toolName) {
+            if (!studentNameInput.value.trim()) { nameError.classList.remove('hidden'); studentNameInput.focus(); return; }
+            nameError.classList.add('hidden'); showWorkbooksForTool(toolName);
+        }
+        function showWorkbooksForTool(toolName) {
+            currentTool = toolName; workbookListTitle.textContent = `🚀 ${toolName} 워크북`;
+            const filteredWorkbooks = allWorkbooks.filter(wb => wb.tool === toolName);
+            workbookListContainer.innerHTML = '';
+            filteredWorkbooks.forEach(wb => {
+                const card = document.createElement('div');
+                card.className = "bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer";
+                card.innerHTML = `<h3 class="text-2xl font-bold text-gray-800">${wb.name}</h3><p class="text-gray-600 mt-2">${wb.description}</p>`;
+                card.onclick = () => startWorkbook(wb);
+                workbookListContainer.appendChild(card);
+            });
+            switchView('workbook-list-view');
+        }
+        
+        // [수정됨] 워크북 시작 시 제출 여부 확인
+        function startWorkbook(workbookData) {
+            currentWorkbook = workbookData;
+            const key = getStorageKey();
+            const savedState = localStorage.getItem(key);
+            if (savedState && JSON.parse(savedState).submitted) {
+                showCustomConfirm(() => { // 복습하기
+                    buildAndLoadWorkbook(workbookData, true);
+                }, () => { // 새로 시작
+                    localStorage.removeItem(key);
+                    buildAndLoadWorkbook(workbookData, false);
+                });
+            } else { // 처음 시작하거나, 중간 저장된 내용이 있을 때
+                buildAndLoadWorkbook(workbookData, false);
+            }
+        }
+
+        function buildAndLoadWorkbook(workbookData, isReview) {
+            if (buildWorkbookView(workbookData, isReview)) {
+                switchView('workbook-view');
+                loadStateFromLocalStorage(isReview);
+            }
+        }
+
+        function showCustomConfirm(onReview, onRestart) {
+            customConfirm.classList.remove('hidden');
+            document.getElementById('confirm-review-btn').onclick = () => { customConfirm.classList.add('hidden'); onReview(); };
+            document.getElementById('confirm-restart-btn').onclick = () => { customConfirm.classList.add('hidden'); onRestart(); };
+        }
+        
+        function buildWorkbookView(workbook, isReviewMode = false) {
+            try {
+                const content = JSON.parse(workbook.content);
+                let contentHtml = `<header class="text-center mb-10"><h1 class="text-4xl md:text-5xl font-black text-gray-800">${workbook.name}</h1><p class="text-lg text-gray-600 mt-2">${workbook.description}</p></header><main class="space-y-8">`;
+
+                if (content.introMedia && Array.isArray(content.introMedia) && content.introMedia.length > 0) {
+                    contentHtml += `<div class="slider-container workbook-section">`;
+                    content.introMedia.forEach(media => {
+                        contentHtml += `<div class="slide">`;
+                        if (media.type === 'image') { contentHtml += `<img src="${media.url}" alt="${media.caption || '워크북 이미지'}">`; } 
+                        else if (media.type === 'video') { contentHtml += `<iframe src="${media.url}" class="w-full" style="aspect-ratio: 16/9;" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`; }
+                        if (media.caption) { contentHtml += `<div class="caption-text">${media.caption}</div>`; }
+                        contentHtml += `</div>`;
+                    });
+                    if (content.introMedia.length > 1) {
+                        contentHtml += `<a class="prev slider-nav" onclick="plusSlides(-1)">&#10094;</a><a class="next slider-nav" onclick="plusSlides(1)">&#10095;</a>`;
+                        contentHtml += `</div><div class="dots-container">`;
+                        content.introMedia.forEach((_, i) => { contentHtml += `<span class="dot" onclick="currentSlide(${i + 1})"></span>`; });
+                        contentHtml += `</div>`;
+                    } else { contentHtml += `</div>`; }
+                }
+
+                const keywords = (content.aiKeywords && Array.isArray(content.aiKeywords) && content.aiKeywords.length >= 3) ? content.aiKeywords : ['로봇', '색깔', '손님'];
+                const aiStorySectionHtml = `<div class="workbook-section"><h2 class="text-2xl font-bold text-gray-700 mb-4">🚀 AI 친구랑 이야기 만들기</h2><p class="text-gray-600 mb-4">오늘 만든 모델에 대한 재미있는 이야기를 상상해봐요!</p><div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4"><input id="keyword1" data-save type="text" placeholder="단어 1 (예: ${keywords[0]})" class="p-2 border rounded-md"><input id="keyword2" data-save type="text" placeholder="단어 2 (예: ${keywords[1]})" class="p-2 border rounded-md"><input id="keyword3" data-save type="text" placeholder="단어 3 (예: ${keywords[2]})" class="p-2 border rounded-md"></div><button id="generateStoryBtn" class="w-full bg-blue-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-600 flex items-center justify-center"><span id="btnText">재미있는 이야기 만들기!</span><div id="btnSpinner" class="spinner hidden ml-2"></div></button><div id="storyResult" data-save class="mt-4 p-4 bg-gray-100 rounded-md min-h-[100px] whitespace-pre-wrap"></div></div>`;
+                if (content.type === 'bricq-hybrid') {
+                    contentHtml += `<section class="workbook-section"><h2 class="text-2xl font-bold text-gray-700 mb-4">① 오늘의 실험: ${content.mainQuestion}</h2></section><section class="workbook-section"><h2 class="text-2xl font-bold text-gray-700 mb-4">② 핵심 개념</h2>${content.keyConcepts.map(c => `<div class="mb-2"><strong class="text-blue-600">${c.term}:</strong> ${c.description}</div>`).join('')}</section><section class="workbook-section"><h2 class="text-2xl font-bold text-gray-700 mb-4">③ 활동 체크리스트</h2><ul id="task-list" class="space-y-3">${content.tasks.map(task => `<li class="task-item flex items-center p-3 bg-slate-100 rounded-lg cursor-pointer"><div class="checkbox w-6 h-6 border-2 border-gray-300 rounded-md mr-4"></div><span>${task}</span></li>`).join('')}</ul></section><section class="workbook-section"><h2 class="text-2xl font-bold text-gray-700 mb-4">④ 결과 분석 및 퀴즈</h2>${content.quizzes.map((q, i) => `<div class="mb-4"><label for="quiz${i}" class="block font-semibold mb-1">${q.question}</label><textarea id="quiz${i}" data-save rows="3" class="w-full p-2 border rounded-md"></textarea></div>`).join('')}</section>${aiStorySectionHtml}`;
+                    if(content.spikeExtension) { contentHtml += `<section class="workbook-section border-4 border-dashed border-blue-400"><h2 class="text-2xl font-bold text-blue-700 mb-4">${content.spikeExtension.title}</h2><p class="mb-4">${content.spikeExtension.mission}</p><p class="mb-2"><strong>필요 부품:</strong> ${content.spikeExtension.requiredParts.join(', ')}</p><div class="mb-4"><label for="spike-idea" class="block font-semibold mb-1">${content.spikeExtension.ideaPrompt}</label><textarea id="spike-idea" data-save rows="3" class="w-full p-2 border rounded-md"></textarea></div></section>`; }
+                } else {
+                    contentHtml += `<div class="workbook-section"><h2 class="text-2xl font-bold text-gray-700 mb-4">✅ 오늘 내가 할 일!</h2><ul id="task-list" class="space-y-3">${content.tasks.map(task => `<li class="task-item flex items-center p-3 bg-slate-100 rounded-lg cursor-pointer"><div class="checkbox w-6 h-6 border-2 border-gray-300 rounded-md mr-4"></div><span>${task}</span></li>`).join('')}</ul></div>${aiStorySectionHtml}<div class="workbook-section"><h2 class="text-2xl font-bold text-gray-700 mb-4">🤔 생각 나누기</h2><div class="space-y-4">${content.thoughts.map((thought, i) => `<div><label for="thought${i}" class="block font-semibold mb-1">${thought}</label><textarea id="thought${i}" data-save rows="3" class="w-full p-2 border rounded-md"></textarea></div>`).join('')}</div></div>`;
+                }
+                contentHtml += `<div class="flex justify-between items-center mt-8"><button id="back-to-list-btn" class="bg-gray-200 text-gray-700 font-bold py-2 px-4 rounded-lg hover:bg-gray-300">← 워크북 목록</button><button id="saveBtn" class="bg-green-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-green-600">최종 제출하기</button></div></main>`;
+                workbookView.innerHTML = contentHtml;
+                addWorkbookEventListeners();
+                if (content.introMedia && content.introMedia.length > 0) { slideIndex = 1; showSlide(slideIndex); }
+                return true;
+
+            } catch (error) {
+                console.error("워크북 콘텐츠(JSON) 파싱 오류:", error);
+                alert(`'${workbook.name}' 워크북을 여는 데 실패했습니다.\n\n원인: 워크북의 '콘텐츠' 데이터(설계도)에 오류가 있는 것 같습니다.\n\n해결 방법: 구글 시트에서 해당 워크북의 '콘텐츠' 셀 내용을 다시 한번 확인해주세요. (쉼표, 따옴표, 괄호 등)`);
+                switchView('workbook-list-view'); 
+                return false;
+            }
+        }
+
+        function addWorkbookEventListeners() {
+            document.querySelectorAll('#workbook-view [data-save]').forEach(el => el.addEventListener('input', saveStateToLocalStorage));
+            document.querySelectorAll('.task-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    item.classList.toggle('completed');
+                    const checkbox = item.querySelector('.checkbox');
+                    checkbox.style.backgroundColor = item.classList.contains('completed') ? '#34d399' : 'transparent';
+                    checkbox.style.borderColor = item.classList.contains('completed') ? '#34d399' : '#d1d5db';
+                    saveStateToLocalStorage();
+                });
+            });
+            const generateBtn = document.getElementById('generateStoryBtn');
+            if(generateBtn) generateBtn.addEventListener('click', handleGenerateStory);
+            document.getElementById('saveBtn').addEventListener('click', handleFinalSubmit);
+            document.getElementById('back-to-list-btn').addEventListener('click', () => showWorkbooksForTool(currentTool));
+        }
+
+        async function handleGenerateStory() {
+            if (!geminiApiKey) { alert('AI 기능에 필요한 API 키가 로드되지 않았습니다.'); return; }
+            const k1 = document.getElementById('keyword1').value.trim(), k2 = document.getElementById('keyword2').value.trim(), k3 = document.getElementById('keyword3').value.trim();
+            if (!k1 || !k2 || !k3) { alert('세 가지 단어를 모두 입력해주세요!'); return; }
+            const prompt = `오늘 만든 '${currentWorkbook.name}' 모델에 대한 이야기야. '${k1}', '${k2}', '${k3}' 단어를 꼭 넣어서, 초등학생이 좋아할 만한 짧고 재미있는 이야기를 5문장 내외로 만들어 줘.`;
+            const btn = document.getElementById('generateStoryBtn'), storyResult = document.getElementById('storyResult');
+            btn.disabled = true; btn.querySelector('#btnText').textContent = 'AI가 생각 중...'; btn.querySelector('#btnSpinner').classList.remove('hidden');
+            storyResult.textContent = 'AI 친구가 열심히 이야기를 만들고 있어요...';
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${geminiApiKey}`;
+            try {
+                const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) });
+                if (!response.ok) { const errorData = await response.json(); throw new Error(errorData.error.message); }
+                const data = await response.json();
+                const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                storyResult.textContent = text || "이야기를 만들지 못했어요.";
+                saveStateToLocalStorage();
+            } catch (error) {
+                console.error("Gemini API Error:", error);
+                storyResult.textContent = `이야기 생성에 실패했어요. (오류: ${error.message})`;
+            } finally {
+                btn.disabled = false; btn.querySelector('#btnText').textContent = '재미있는 이야기 만들기!'; btn.querySelector('#btnSpinner').classList.add('hidden');
+            }
+        }
+
+        function initializeApp() {
+            if (typeof google === 'undefined' || !google.script || !google.script.run) { setTimeout(initializeApp, 100); return; }
+            google.script.run.withSuccessHandler(data => {
+                if (data.error) { throw new Error(data.error); }
+                allWorkbooks = data.workbooks; geminiApiKey = data.apiKey;
+                showLoading(false); displayStartScreen();
+            }).withFailureHandler(err => {
+                console.error("초기화 실패:", err); showLoading(false);
+                alert('앱을 초기화하는 데 실패했습니다: ' + (err.message || '알 수 없는 오류'));
+            }).getInitialData();
+        }
+
+        backToStartBtn.addEventListener('click', () => switchView('start-view'));
+        window.onload = initializeApp;
     </script>
 </body>
 </html>
