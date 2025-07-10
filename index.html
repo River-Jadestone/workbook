@@ -13,8 +13,6 @@
         .view { display: none; }
         .view.active { display: block; }
         .workbook-section { background-color: white; border-radius: 1rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); padding: 1.5rem; }
-        
-        /* 슬라이드쇼 스타일 */
         .slider-container { position: relative; max-width: 100%; margin: auto; }
         .slide { display: none; animation: fadeIn 0.5s; }
         @keyframes fadeIn { from { opacity: 0.4 } to { opacity: 1 } }
@@ -27,20 +25,17 @@
         .dots-container { text-align: center; padding: 10px 0; }
         .dot { cursor: pointer; height: 15px; width: 15px; margin: 0 2px; background-color: #bbb; border-radius: 50%; display: inline-block; transition: background-color 0.6s ease; }
         .dot.active { background-color: #717171; }
-
-        /* 커스텀 확인 창 스타일 */
         .custom-confirm-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 100; }
         .custom-confirm-box { background: white; padding: 2rem; border-radius: 1rem; text-align: center; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04); max-width: 90%; width: 400px; }
     </style>
 </head>
 <body class="text-gray-800">
 
-    <div id="loading-overlay" class="fixed inset-0 bg-white bg-opacity-75 z-50 flex-col items-center justify-center">
+    <div id="loading-overlay" class="fixed inset-0 bg-white bg-opacity-75 z-50 flex flex-col items-center justify-center">
         <div class="spinner"></div>
         <p id="loading-text" class="mt-2 font-bold text-lg">워크북을 불러오는 중...</p>
     </div>
 
-    <!-- [신규] 커스텀 확인 창 -->
     <div id="custom-confirm" class="custom-confirm-overlay hidden">
         <div class="custom-confirm-box">
             <h3 class="text-xl font-bold mb-4">이미 제출한 워크북입니다.</h3>
@@ -70,7 +65,6 @@
     </div>
 
     <script>
-        // 전역 변수 선언
         const loadingOverlay = document.getElementById('loading-overlay'), loadingText = document.getElementById('loading-text');
         const startView = document.getElementById('start-view'), workbookListView = document.getElementById('workbook-list-view'), workbookView = document.getElementById('workbook-view');
         const studentNameInput = document.getElementById('studentName'), nameError = document.getElementById('name-error');
@@ -78,9 +72,8 @@
         const toolListContainer = document.getElementById('tool-list'), workbookListContainer = document.getElementById('workbook-list'), workbookListTitle = document.getElementById('workbook-list-title');
         const customConfirm = document.getElementById('custom-confirm');
 
-        let allWorkbooks = [], geminiApiKey = null, currentTool = '', currentWorkbook = null, slideIndex = 1;
+        let allWorkbooks = [], currentTool = '', currentWorkbook = null, slideIndex = 1;
 
-        // --- 핵심 기능 함수들 ---
         function showLoading(show, message = '처리 중...') { loadingText.textContent = message; loadingOverlay.style.display = show ? 'flex' : 'none'; }
         function switchView(viewId) { document.querySelectorAll('.view').forEach(v => v.classList.remove('active')); document.getElementById(viewId).classList.add('active'); window.scrollTo(0, 0); }
         function getStorageKey() { if (!studentNameInput.value.trim() || !currentWorkbook) return null; return `smart-workbook-${studentNameInput.value.trim()}-${currentWorkbook.id}`; }
@@ -91,7 +84,12 @@
             document.querySelectorAll('#workbook-view [data-save]').forEach(el => { state[el.id] = el.type === 'checkbox' ? el.checked : (el.value !== undefined ? el.value : el.innerHTML); });
             const tasks = document.querySelectorAll('.task-item');
             if (tasks.length > 0) { state.tasks = Array.from(tasks).map(item => item.classList.contains('completed')); }
-            state.submitted = isSubmitted; // [수정됨] 제출 상태 플래그 추가
+            
+            // 이미지 URL 저장
+            const imgPreview = document.getElementById('image-preview');
+            if (imgPreview) { state.imageUrl = imgPreview.src; }
+            
+            state.submitted = isSubmitted;
             localStorage.setItem(key, JSON.stringify(state));
         }
 
@@ -116,13 +114,20 @@
                         }
                     });
                 }
-                // [신규] 복습 모드일 경우 모든 입력 비활성화
+                // 이미지 URL 불러오기
+                const imgPreview = document.getElementById('image-preview');
+                if (imgPreview && state.imageUrl && state.imageUrl.startsWith('https')) {
+                    imgPreview.src = state.imageUrl;
+                    imgPreview.classList.remove('hidden');
+                    document.getElementById('upload-btn').textContent = '사진 변경하기';
+                }
+
                 if (isReviewMode) {
                     document.querySelectorAll('#workbook-view textarea, #workbook-view input, #workbook-view button, .task-item').forEach(el => {
                         el.disabled = true;
                         if(el.classList.contains('task-item')) el.style.cursor = 'default';
                     });
-                    document.getElementById('back-to-list-btn').disabled = false; // 뒤로가기 버튼은 활성화
+                    document.getElementById('back-to-list-btn').disabled = false;
                 }
             }
         }
@@ -131,11 +136,12 @@
             showLoading(true, '최종 결과를 선생님께 보내는 중...');
             const recordData = {
                 studentName: studentNameInput.value.trim(), tool: currentTool, workbookId: currentWorkbook.id, workbookName: currentWorkbook.name,
-                activityContent: getActivityContent(), aiStory: document.getElementById('storyResult')?.textContent || ''
+                activityContent: getActivityContent(), aiStory: document.getElementById('storyResult')?.textContent || '',
+                imageUrl: document.getElementById('image-preview')?.src || ''
             };
             google.script.run.withSuccessHandler(response => {
                 showLoading(false); alert('워크북 활동이 성공적으로 제출되었어요!');
-                saveStateToLocalStorage(true); // [수정됨] 삭제 대신 '제출 완료' 상태로 저장
+                saveStateToLocalStorage(true);
                 switchView('start-view');
             }).withFailureHandler(err => { showLoading(false); alert('제출 실패: ' + err.message); }).saveRecord(recordData);
         }
@@ -154,6 +160,7 @@
             }
             return activityContent;
         }
+
         function plusSlides(n) { showSlide(slideIndex += n); }
         function currentSlide(n) { showSlide(slideIndex = n); }
         function showSlide(n) {
@@ -164,6 +171,7 @@
             for (i = 0; i < dots.length; i++) { dots[i].className = dots[i].className.replace(" active", ""); }
             if (slides.length > 0) { slides[slideIndex-1].style.display = "block"; dots[slideIndex-1].className += " active"; }
         }
+
         function displayStartScreen() {
             const tools = [...new Set(allWorkbooks.map(wb => wb.tool))];
             toolListContainer.innerHTML = '';
@@ -176,10 +184,12 @@
             });
             switchView('start-view');
         }
+
         function selectTool(toolName) {
             if (!studentNameInput.value.trim()) { nameError.classList.remove('hidden'); studentNameInput.focus(); return; }
             nameError.classList.add('hidden'); showWorkbooksForTool(toolName);
         }
+
         function showWorkbooksForTool(toolName) {
             currentTool = toolName; workbookListTitle.textContent = `🚀 ${toolName} 워크북`;
             const filteredWorkbooks = allWorkbooks.filter(wb => wb.tool === toolName);
@@ -194,21 +204,13 @@
             switchView('workbook-list-view');
         }
         
-        // [수정됨] 워크북 시작 시 제출 여부 확인
         function startWorkbook(workbookData) {
             currentWorkbook = workbookData;
             const key = getStorageKey();
             const savedState = localStorage.getItem(key);
             if (savedState && JSON.parse(savedState).submitted) {
-                showCustomConfirm(() => { // 복습하기
-                    buildAndLoadWorkbook(workbookData, true);
-                }, () => { // 새로 시작
-                    localStorage.removeItem(key);
-                    buildAndLoadWorkbook(workbookData, false);
-                });
-            } else { // 처음 시작하거나, 중간 저장된 내용이 있을 때
-                buildAndLoadWorkbook(workbookData, false);
-            }
+                showCustomConfirm(() => { buildAndLoadWorkbook(workbookData, true); }, () => { localStorage.removeItem(key); buildAndLoadWorkbook(workbookData, false); });
+            } else { buildAndLoadWorkbook(workbookData, false); }
         }
 
         function buildAndLoadWorkbook(workbookData, isReview) {
@@ -246,14 +248,17 @@
                     } else { contentHtml += `</div>`; }
                 }
 
+                const imageUploadSectionHtml = `<div class="workbook-section"><h2 class="text-2xl font-bold text-gray-700 mb-4">📸 관찰 기록 (사진)</h2><p class="text-gray-600 mb-4">활동 결과물이나 과정 사진을 업로드해 보세요.</p><div class="p-4 border-2 border-dashed rounded-lg text-center"><img id="image-preview" class="hidden w-full max-w-md mx-auto rounded-lg shadow-md mb-4" src=""><input type="file" id="image-uploader" accept="image/*" class="hidden"><button type="button" id="upload-btn" class="bg-blue-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-600 transition-colors">사진 선택하기</button><div id="image-spinner" class="hidden mt-2"><div class="spinner inline-block"></div><span class="ml-2 align-middle">사진을 올리는 중...</span></div></div></div>`;
                 const keywords = (content.aiKeywords && Array.isArray(content.aiKeywords) && content.aiKeywords.length >= 3) ? content.aiKeywords : ['로봇', '색깔', '손님'];
                 const aiStorySectionHtml = `<div class="workbook-section"><h2 class="text-2xl font-bold text-gray-700 mb-4">🚀 AI 친구랑 이야기 만들기</h2><p class="text-gray-600 mb-4">오늘 만든 모델에 대한 재미있는 이야기를 상상해봐요!</p><div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4"><input id="keyword1" data-save type="text" placeholder="단어 1 (예: ${keywords[0]})" class="p-2 border rounded-md"><input id="keyword2" data-save type="text" placeholder="단어 2 (예: ${keywords[1]})" class="p-2 border rounded-md"><input id="keyword3" data-save type="text" placeholder="단어 3 (예: ${keywords[2]})" class="p-2 border rounded-md"></div><button id="generateStoryBtn" class="w-full bg-blue-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-600 flex items-center justify-center"><span id="btnText">재미있는 이야기 만들기!</span><div id="btnSpinner" class="spinner hidden ml-2"></div></button><div id="storyResult" data-save class="mt-4 p-4 bg-gray-100 rounded-md min-h-[100px] whitespace-pre-wrap"></div></div>`;
+                
                 if (content.type === 'bricq-hybrid') {
-                    contentHtml += `<section class="workbook-section"><h2 class="text-2xl font-bold text-gray-700 mb-4">① 오늘의 실험: ${content.mainQuestion}</h2></section><section class="workbook-section"><h2 class="text-2xl font-bold text-gray-700 mb-4">② 핵심 개념</h2>${content.keyConcepts.map(c => `<div class="mb-2"><strong class="text-blue-600">${c.term}:</strong> ${c.description}</div>`).join('')}</section><section class="workbook-section"><h2 class="text-2xl font-bold text-gray-700 mb-4">③ 활동 체크리스트</h2><ul id="task-list" class="space-y-3">${content.tasks.map(task => `<li class="task-item flex items-center p-3 bg-slate-100 rounded-lg cursor-pointer"><div class="checkbox w-6 h-6 border-2 border-gray-300 rounded-md mr-4"></div><span>${task}</span></li>`).join('')}</ul></section><section class="workbook-section"><h2 class="text-2xl font-bold text-gray-700 mb-4">④ 결과 분석 및 퀴즈</h2>${content.quizzes.map((q, i) => `<div class="mb-4"><label for="quiz${i}" class="block font-semibold mb-1">${q.question}</label><textarea id="quiz${i}" data-save rows="3" class="w-full p-2 border rounded-md"></textarea></div>`).join('')}</section>${aiStorySectionHtml}`;
+                    contentHtml += `<section class="workbook-section"><h2 class="text-2xl font-bold text-gray-700 mb-4">① 오늘의 실험: ${content.mainQuestion}</h2></section><section class="workbook-section"><h2 class="text-2xl font-bold text-gray-700 mb-4">② 핵심 개념</h2>${content.keyConcepts.map(c => `<div class="mb-2"><strong class="text-blue-600">${c.term}:</strong> ${c.description}</div>`).join('')}</section><section class="workbook-section"><h2 class="text-2xl font-bold text-gray-700 mb-4">③ 활동 체크리스트</h2><ul id="task-list" class="space-y-3">${content.tasks.map(task => `<li class="task-item flex items-center p-3 bg-slate-100 rounded-lg cursor-pointer"><div class="checkbox w-6 h-6 border-2 border-gray-300 rounded-md mr-4"></div><span>${task}</span></li>`).join('')}</ul></section><section class="workbook-section"><h2 class="text-2xl font-bold text-gray-700 mb-4">④ 결과 분석 및 퀴즈</h2>${content.quizzes.map((q, i) => `<div class="mb-4"><label for="quiz${i}" class="block font-semibold mb-1">${q.question}</label><textarea id="quiz${i}" data-save rows="3" class="w-full p-2 border rounded-md"></textarea></div>`).join('')}</section>${imageUploadSectionHtml}${aiStorySectionHtml}`;
                     if(content.spikeExtension) { contentHtml += `<section class="workbook-section border-4 border-dashed border-blue-400"><h2 class="text-2xl font-bold text-blue-700 mb-4">${content.spikeExtension.title}</h2><p class="mb-4">${content.spikeExtension.mission}</p><p class="mb-2"><strong>필요 부품:</strong> ${content.spikeExtension.requiredParts.join(', ')}</p><div class="mb-4"><label for="spike-idea" class="block font-semibold mb-1">${content.spikeExtension.ideaPrompt}</label><textarea id="spike-idea" data-save rows="3" class="w-full p-2 border rounded-md"></textarea></div></section>`; }
                 } else {
-                    contentHtml += `<div class="workbook-section"><h2 class="text-2xl font-bold text-gray-700 mb-4">✅ 오늘 내가 할 일!</h2><ul id="task-list" class="space-y-3">${content.tasks.map(task => `<li class="task-item flex items-center p-3 bg-slate-100 rounded-lg cursor-pointer"><div class="checkbox w-6 h-6 border-2 border-gray-300 rounded-md mr-4"></div><span>${task}</span></li>`).join('')}</ul></div>${aiStorySectionHtml}<div class="workbook-section"><h2 class="text-2xl font-bold text-gray-700 mb-4">🤔 생각 나누기</h2><div class="space-y-4">${content.thoughts.map((thought, i) => `<div><label for="thought${i}" class="block font-semibold mb-1">${thought}</label><textarea id="thought${i}" data-save rows="3" class="w-full p-2 border rounded-md"></textarea></div>`).join('')}</div></div>`;
+                    contentHtml += `<div class="workbook-section"><h2 class="text-2xl font-bold text-gray-700 mb-4">✅ 오늘 내가 할 일!</h2><ul id="task-list" class="space-y-3">${content.tasks.map(task => `<li class="task-item flex items-center p-3 bg-slate-100 rounded-lg cursor-pointer"><div class="checkbox w-6 h-6 border-2 border-gray-300 rounded-md mr-4"></div><span>${task}</span></li>`).join('')}</ul></div>${imageUploadSectionHtml}${aiStorySectionHtml}<div class="workbook-section"><h2 class="text-2xl font-bold text-gray-700 mb-4">🤔 생각 나누기</h2><div class="space-y-4">${content.thoughts.map((thought, i) => `<div><label for="thought${i}" class="block font-semibold mb-1">${thought}</label><textarea id="thought${i}" data-save rows="3" class="w-full p-2 border rounded-md"></textarea></div>`).join('')}</div></div>`;
                 }
+
                 contentHtml += `<div class="flex justify-between items-center mt-8"><button id="back-to-list-btn" class="bg-gray-200 text-gray-700 font-bold py-2 px-4 rounded-lg hover:bg-gray-300">← 워크북 목록</button><button id="saveBtn" class="bg-green-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-green-600">최종 제출하기</button></div></main>`;
                 workbookView.innerHTML = contentHtml;
                 addWorkbookEventListeners();
@@ -269,7 +274,7 @@
         }
 
         function addWorkbookEventListeners() {
-            document.querySelectorAll('#workbook-view [data-save]').forEach(el => el.addEventListener('input', saveStateToLocalStorage));
+            document.querySelectorAll('#workbook-view [data-save]').forEach(el => el.addEventListener('input', () => saveStateToLocalStorage()));
             document.querySelectorAll('.task-item').forEach(item => {
                 item.addEventListener('click', () => {
                     item.classList.toggle('completed');
@@ -283,37 +288,77 @@
             if(generateBtn) generateBtn.addEventListener('click', handleGenerateStory);
             document.getElementById('saveBtn').addEventListener('click', handleFinalSubmit);
             document.getElementById('back-to-list-btn').addEventListener('click', () => showWorkbooksForTool(currentTool));
+            
+            const uploadBtn = document.getElementById('upload-btn');
+            const imageUploader = document.getElementById('image-uploader');
+            if(uploadBtn && imageUploader) {
+                uploadBtn.addEventListener('click', () => imageUploader.click());
+                imageUploader.addEventListener('change', handleImageUpload);
+            }
+        }
+        
+        function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            const spinner = document.getElementById('image-spinner');
+            const preview = document.getElementById('image-preview');
+            const uploadBtn = document.getElementById('upload-btn');
+            reader.onloadstart = () => { spinner.classList.remove('hidden'); uploadBtn.disabled = true; uploadBtn.textContent = '업로드 중...'; };
+            reader.onload = (e) => {
+                const [meta, base64Data] = e.target.result.split(',');
+                const fileObject = { base64Data: base64Data, mimeType: file.type, fileName: file.name };
+                google.script.run
+                    .withSuccessHandler(imageUrl => {
+                        spinner.classList.add('hidden');
+                        preview.src = imageUrl;
+                        preview.classList.remove('hidden');
+                        uploadBtn.textContent = '사진 변경하기';
+                        uploadBtn.disabled = false;
+                        saveStateToLocalStorage();
+                    })
+                    .withFailureHandler(err => {
+                        alert('사진 업로드 실패: ' + err.message);
+                        spinner.classList.add('hidden');
+                        uploadBtn.textContent = '다시 시도하기';
+                        uploadBtn.disabled = false;
+                    })
+                    .uploadImageToDrive(fileObject);
+            };
+            reader.onerror = (err) => { console.error("파일 읽기 오류: ", err); alert("파일을 읽는 데 문제가 발생했습니다."); };
         }
 
-        async function handleGenerateStory() {
-            if (!geminiApiKey) { alert('AI 기능에 필요한 API 키가 로드되지 않았습니다.'); return; }
+        function handleGenerateStory() {
             const k1 = document.getElementById('keyword1').value.trim(), k2 = document.getElementById('keyword2').value.trim(), k3 = document.getElementById('keyword3').value.trim();
             if (!k1 || !k2 || !k3) { alert('세 가지 단어를 모두 입력해주세요!'); return; }
             const prompt = `오늘 만든 '${currentWorkbook.name}' 모델에 대한 이야기야. '${k1}', '${k2}', '${k3}' 단어를 꼭 넣어서, 초등학생이 좋아할 만한 짧고 재미있는 이야기를 5문장 내외로 만들어 줘.`;
             const btn = document.getElementById('generateStoryBtn'), storyResult = document.getElementById('storyResult');
-            btn.disabled = true; btn.querySelector('#btnText').textContent = 'AI가 생각 중...'; btn.querySelector('#btnSpinner').classList.remove('hidden');
+            const btnText = btn.querySelector('#btnText'), btnSpinner = btn.querySelector('#btnSpinner');
+
+            btn.disabled = true; btnText.textContent = 'AI가 생각 중...'; btnSpinner.classList.remove('hidden');
             storyResult.textContent = 'AI 친구가 열심히 이야기를 만들고 있어요...';
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${geminiApiKey}`;
-            try {
-                const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) });
-                if (!response.ok) { const errorData = await response.json(); throw new Error(errorData.error.message); }
-                const data = await response.json();
-                const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-                storyResult.textContent = text || "이야기를 만들지 못했어요.";
-                saveStateToLocalStorage();
-            } catch (error) {
-                console.error("Gemini API Error:", error);
-                storyResult.textContent = `이야기 생성에 실패했어요. (오류: ${error.message})`;
-            } finally {
-                btn.disabled = false; btn.querySelector('#btnText').textContent = '재미있는 이야기 만들기!'; btn.querySelector('#btnSpinner').classList.add('hidden');
-            }
+            
+            google.script.run
+                .withSuccessHandler(text => {
+                    storyResult.textContent = text;
+                    saveStateToLocalStorage();
+                })
+                .withFailureHandler(error => {
+                    console.error("서버 측 Gemini API 오류:", error);
+                    storyResult.textContent = `이야기 생성에 실패했어요. (오류: ${error.message})`;
+                })
+                .whenFinished(() => { // 성공/실패 여부와 관계없이 실행
+                    btn.disabled = false; btnText.textContent = '재미있는 이야기 만들기!'; btnSpinner.classList.add('hidden');
+                })
+                .generateStoryWithGemini(prompt);
         }
 
         function initializeApp() {
             if (typeof google === 'undefined' || !google.script || !google.script.run) { setTimeout(initializeApp, 100); return; }
             google.script.run.withSuccessHandler(data => {
                 if (data.error) { throw new Error(data.error); }
-                allWorkbooks = data.workbooks; geminiApiKey = data.apiKey;
+                allWorkbooks = data.workbooks;
                 showLoading(false); displayStartScreen();
             }).withFailureHandler(err => {
                 console.error("초기화 실패:", err); showLoading(false);
