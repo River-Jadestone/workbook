@@ -35,12 +35,11 @@
 </head>
 <body class="text-gray-800">
 
-    <div id="loading-overlay" class="fixed inset-0 bg-white bg-opacity-75 z-50 flex-col items-center justify-center">
+    <div id="loading-overlay" class="fixed inset-0 bg-white bg-opacity-75 z-50 flex flex-col items-center justify-center">
         <div class="spinner"></div>
         <p id="loading-text" class="mt-2 font-bold text-lg">워크북을 불러오는 중...</p>
     </div>
 
-    <!-- [신규] 커스텀 확인 창 -->
     <div id="custom-confirm" class="custom-confirm-overlay hidden">
         <div class="custom-confirm-box">
             <h3 class="text-xl font-bold mb-4">이미 제출한 워크북입니다.</h3>
@@ -232,7 +231,7 @@
                     return `https://www.youtube.com/embed/${urlObj.pathname.slice(1)}`;
                 }
             } catch (e) {
-                console.error("유튜브 embed URL 파싱 오류:", url, e);
+                console.error("YouTube URL parsing error:", url, e);
             }
             return url;
         }
@@ -330,12 +329,21 @@
         function initializeApp() {
             if (typeof google === 'undefined' || !google.script || !google.script.run) { setTimeout(initializeApp, 100); return; }
             google.script.run.withSuccessHandler(data => {
-                if (data.error) { throw new Error(data.error); }
-                allWorkbooks = data.workbooks; geminiApiKey = data.apiKey;
-                showLoading(false); displayStartScreen();
+                if (data.error) {
+                    console.error("Error during initialization:", data.error);
+                    alert('앱 초기화 중 오류 발생: ' + data.error);
+                    loadingText.textContent = '오류가 발생했습니다. 새로고침해주세요.';
+                    return;
+                }
+                allWorkbooks = data.workbooks; 
+                geminiApiKey = data.apiKey;
+                showLoading(false); 
+                displayStartScreen();
             }).withFailureHandler(err => {
-                console.error("초기화 실패:", err); showLoading(false);
+                console.error("초기화 실패:", err); 
+                showLoading(false);
                 alert('앱을 초기화하는 데 실패했습니다: ' + (err.message || '알 수 없는 오류'));
+                loadingText.textContent = '오류가 발생했습니다. 새로고침해주세요.';
             }).getInitialData();
         }
 
