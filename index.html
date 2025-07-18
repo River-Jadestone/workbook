@@ -222,22 +222,18 @@
             document.getElementById('confirm-restart-btn').onclick = () => { customConfirm.classList.add('hidden'); onRestart(); };
         }
         
-        // ★★★★★ 유튜브 링크 변환 기능 추가됨 ★★★★★
         function getYouTubeEmbedUrl(url) {
             try {
                 const urlObj = new URL(url);
-                // 표준 youtube.com/watch?v=... 링크 처리
                 if (urlObj.hostname.includes('youtube.com') && urlObj.searchParams.has('v')) {
                     return `https://www.youtube.com/embed/${urlObj.searchParams.get('v')}`;
                 }
-                // 단축 youtu.be/... 링크 처리
                 else if (urlObj.hostname.includes('youtu.be')) {
                     return `https://www.youtube.com/embed/${urlObj.pathname.slice(1)}`;
                 }
             } catch (e) {
                 console.error("유튜브 embed URL 파싱 오류:", url, e);
             }
-            // 유튜브 링크가 아니거나 파싱 실패 시 원본 URL 반환
             return url;
         }
         
@@ -254,7 +250,6 @@
                             contentHtml += `<img src="${media.url}" alt="${media.caption || '워크북 이미지'}">`; 
                         } 
                         else if (media.type === 'video') { 
-                            // ★★★★★ 유튜브 링크를 embed용으로 변환 ★★★★★
                             const embedUrl = getYouTubeEmbedUrl(media.url);
                             contentHtml += `<iframe src="${embedUrl}" class="w-full" style="aspect-ratio: 16/9;" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`; 
                         }
