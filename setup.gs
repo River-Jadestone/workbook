@@ -16,45 +16,67 @@ function setupSheet() {
     const headers = ['워크북ID', '교구', '워크북이름', '워크북설명', '워크북타입', '콘텐츠', '사용여부'];
     workbookSheet.appendRow(headers);
     
-    // 스파이크 워크북 샘플 콘텐츠
-    const spikeSampleContent = {
-      type: "spike-essential", // 워크북 타입 명시
-      tasks: ["스낵 가게 로봇 조립하기", "코딩 약속하기", "기본 코딩 완성하기"],
-      thoughts: ["오늘 활동에서 가장 재미있었던 점은 무엇인가요?", "이 로봇으로 또 무엇을 할 수 있을까요?"]
+    // [수정됨] 스파이크 에센셜 워크북 샘플 콘텐츠
+    const spikeEssentialContent = {
+      type: "spike-essential",
+      learningGoals: [
+        "모터 블록을 사용하여 로봇을 앞뒤로 움직일 수 있다.",
+        "컬러 센서가 색깔을 인식하는 원리를 이해할 수 있다.",
+        "특정 색깔을 감지했을 때, 로봇이 멈추도록 코딩할 수 있다."
+      ],
+      tasks: [
+        "1. '스낵 가게' 모델의 몸체를 조립해요.",
+        "2. 모터와 컬러 센서를 연결해요.",
+        "3. 바퀴를 달아 조립을 완성해요."
+      ],
+      codingChallenges: [
+        { level: 1, mission: "로봇을 2초 동안 앞으로 움직였다가 멈추게 코딩해봅시다." },
+        { level: 2, mission: "파란색을 보면 멈추도록 코딩을 추가해봅시다. (힌트: '...까지 기다리기' 블록을 사용해보세요!)" },
+        { level: 3, mission: "초록색을 보면 멈추고, '맛있게 드세요!' 소리를 내게 해봅시다." }
+      ],
+      thoughts: [
+        "컬러 센서가 없었다면, 이 로봇은 어떻게 손님을 알아볼 수 있었을까요?",
+        "만약 스낵 가게가 아니라 장난감 가게라면, 이 로봇을 어떻게 바꾸고 싶나요?",
+        "오늘 코딩에서 가장 어려웠던 부분과, 그것을 어떻게 해결했는지 이야기해봅시다."
+      ],
+      aiKeywords: ["가게", "손님", "배달"]
     };
 
-    // 브릭큐 하이브리드 워크북 샘플 콘텐츠
-    const bricqHybridSampleContent = {
-      type: "bricq-hybrid",
-      mainQuestion: "크랭크는 회전 운동을 어떻게 직선 운동으로 바꿀까요?",
-      keyConcepts: [
-        { "term": "회전 운동", "description": "물체가 한 점을 중심으로 빙글빙글 도는 움직임이에요." },
-        { "term": "직선 운동", "description": "물체가 곧은 길을 따라 나아가는 움직임이에요." }
+    // [신규] 스파이크 프라임 워크북 샘플 콘텐츠
+    const spikePrimeContent = {
+      type: "spike-prime",
+      learningGoals: [
+        "로봇팔의 구조와 그리퍼(집게)의 원리를 이해한다.",
+        "거리 센서를 이용해 물체와의 거리를 측정할 수 있다.",
+        "조건문('만약 ...이라면')을 사용하여 특정 상황에 따라 다르게 행동하는 로봇을 만들 수 있다."
       ],
-      experiments: [
-        "바퀴를 돌렸을 때 다리의 움직임을 관찰하고 기록해보세요.",
-        "바퀴를 돌렸을 때 팔의 움직임을 관찰하고 기록해보세요."
+      tasks: [
+        "1. 로봇의 움직이는 본체(Chassis)를 만들어요.",
+        "2. 물건을 집을 수 있는 로봇팔(Gripper)을 조립해서 붙여요.",
+        "3. 앞쪽에 거리 센서를, 로봇팔에 컬러 센서를 연결해요."
       ],
-      quizzes: [
-        { "question": "자전거의 페달과 이 모델의 크랭크는 어떤 점이 비슷할까요?", "type": "textarea" },
-        { "question": "이런 움직임은 우리 생활 속 어디에 또 쓰일 수 있을까요?", "type": "textarea" }
+      codingChallenges: [
+        { level: 1, mission: "로봇을 움직여 책상 위의 장애물을 이리저리 피해 다니게 코딩해봅시다." },
+        { level: 2, mission: "로봇 앞에 10cm 이내로 물체가 감지되면, 로봇팔을 내려 물건을 집는 동작을 하게 해봅시다." },
+        { level: 3, mission: "파란색 물건을 집었을 때는 '파란색 상자로 이동!', 빨간색 물건을 집었을 때는 '빨간색 상자로 이동!'이라고 말하게 해봅시다." },
+        { level: "최종 미션", mission: "책상 위에 흩어진 파란색, 빨간색 물건을 각각 지정된 장소로 옮겨서 정리하는 '슈퍼 청소 로봇'을 완성해보세요!" }
       ],
-      spikeExtension: {
-        "title": " 스파이크로 확장하기",
-        "mission": "팔에 컬러센서를 달아, 바닥의 색을 감지하면 다른 소리가 나도록 코딩해봅시다!",
-        "requiredParts": ["컬러센서", "허브"],
-        "ideaPrompt": "색깔마다 다른 소리를 내게 만들 수도 있어요! 나만의 반응을 코딩해볼까요?"
-      }
+      thoughts: [
+        "만약 거리 센서의 측정값이 자꾸 틀린다면, 어떤 점을 확인해봐야 할까요?",
+        "이 청소 로봇을 우리 집에서 사용하려면 어떤 기능을 더 추가하면 좋을까요?",
+        "여러 개의 모터를 동시에 제어할 때 어떤 점이 가장 중요했나요?"
+      ],
+      aiKeywords: ["청소", "로봇팔", "정리"]
     };
     
     const sampleRows = [
-      ['snack-shop', '스파이크 에센셜', ' 알록달록 스낵 가게', '나만의 규칙으로 움직이는 로봇 가게!', 'spike', JSON.stringify(spikeSampleContent), true],
-      ['mr-one-wheeler', '브릭큐 모션 프라임', '⚙️ 미스터 원 휠러', '크랭크 구조의 비밀을 파헤쳐요!', 'bricq', JSON.stringify(bricqHybridSampleContent), true]
+      ['snack-shop-v2', '스파이크 에센셜', '업그레이드! 스낵 가게', '손님이 원하는 색깔의 간식을 배달해줘요!', 'spike', JSON.stringify(spikeEssentialContent), true],
+      ['super-cleaner', '스파이크 프라임', '슈퍼 청소 로봇', '장애물을 피하고, 색깔별로 물건을 정리해요!', 'spike', JSON.stringify(spikePrimeContent), true]
     ];
 
     sampleRows.forEach(row => workbookSheet.appendRow(row));
     workbookSheet.autoResizeColumns(1, headers.length);
-    Browser.msgBox('성공', "'워크북' 시트가 생성되고 샘플 데이터가 추가되었습니다.", Browser.Buttons.OK);
+    Browser.msgBox('성공', "'워크북' 시트가 새로운 샘플 데이터로 생성되었습니다.", Browser.Buttons.OK);
   }
 
   let recordSheet = ss.getSheetByName('기록');
